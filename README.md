@@ -8,13 +8,12 @@ At a high level, DAGFS produces a **single feature ranking per training fold** b
 - **rarity-aware instance reweighting** (training-only) to stabilise learning under heterogeneous supervision,
 - a **directed label-transfer regulariser** to control correlation transfer across labels.
 
-The official paper sources live under `paper/`.  
 The code is intended to be usable independently of the paper experiments: you can run DAGFS on your own datasets and evaluate any downstream classifier you prefer.
 
 ## What is (and is not) included
 
-- ✅ **Included (ours):** DAGFS implementation (`src/`), scripts to run DAGFS and evaluate rankings (`scripts/`), and the LaTeX paper (`paper/`).
-- ❌ **Not included (not ours / too large):** datasets, third‑party baselines, and all generated result folders. These are intentionally ignored by `.gitignore`.
+- ✅ **Included (ours):** DAGFS implementation (`src/`) and scripts to run DAGFS and evaluate rankings (`scripts/`).
+- ❌ **Not included:** datasets, third‑party baselines, and all generated result folders. 
 
 ## Installation
 
@@ -106,12 +105,12 @@ python3 scripts/aggregate_kgrid_and_make_tables.py \
   --results-dir <RESULTS_DIR> \
   --grid-mode pgrid --p-target 0.2 \
   --methods DAGFS \
-  --out-dir paper/tables
+  --out-dir outputs/tables
 
 python3 scripts/make_pgrid_curves.py \
   --results-dir <RESULTS_DIR> \
   --methods DAGFS \
-  --out-dir paper/figures
+  --out-dir outputs/figures
 ```
 
 ## Reproducibility notes
@@ -124,11 +123,10 @@ python3 scripts/make_pgrid_curves.py \
 
 - `src/`: DAGFS implementation (public API)
 - `scripts/`: runnable pipelines (ranking, evaluation, aggregation, plotting)
-- `paper/`: LaTeX manuscript and the final tables/figures used to build it
 
 ## Citation
 
-If you use this code, please cite the accompanying paper (BibTeX in `paper/bibliography.bib`).
+If you use this code, please cite the accompanying paper.
 
 ## Smoke test
 
