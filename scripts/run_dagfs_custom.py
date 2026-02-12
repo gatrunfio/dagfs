@@ -63,7 +63,12 @@ def main() -> None:
         default=[],
         help="Dataset names (default: infer all subdirectories under --data-dir with fold0.mat).",
     )
-    ap.add_argument("--folds", type=int, default=5)
+    ap.add_argument(
+        "--folds",
+        type=int,
+        default=10,
+        help="Number of folds to process (default: 10).",
+    )
     ap.add_argument("--overwrite", action="store_true")
     args = ap.parse_args()
 

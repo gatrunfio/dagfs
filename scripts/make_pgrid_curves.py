@@ -67,8 +67,8 @@ def main() -> None:
     ap.add_argument("--results-dir", type=Path, required=True)
     ap.add_argument("--methods", nargs="+", required=True)
     ap.add_argument("--datasets", nargs="+", default=None)
-    ap.add_argument("--folds", type=int, default=5)
-    ap.add_argument("--out-dir", type=Path, default=Path("paper/figures"))
+    ap.add_argument("--folds", type=int, default=10, help="Number of folds (default: 10).")
+    ap.add_argument("--out-dir", type=Path, default=Path("outputs/figures"))
     ap.add_argument("--no-plot", action="store_true")
     ap.add_argument(
         "--xscale",

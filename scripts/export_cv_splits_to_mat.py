@@ -186,7 +186,7 @@ def main() -> None:
         default=Path("data/asc2025_matlab"),
         help="Output directory for MATLAB fold .mat files",
     )
-    ap.add_argument("--folds", type=int, default=5, help="Number of folds (repeats)")
+    ap.add_argument("--folds", type=int, default=10, help="Number of folds (default: 10)")
     ap.add_argument("--seed", type=int, default=42, help="Base RNG seed")
     ap.add_argument(
         "--scaler",

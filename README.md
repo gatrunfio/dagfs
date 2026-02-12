@@ -76,7 +76,7 @@ python3 scripts/run_dagfs_custom.py \
   --data-dir <DATA_DIR> \
   --output-dir <RESULTS_DIR> \
   --method-name DAGFS \
-  --folds 5
+  --folds 10
 ```
 
 This writes:
@@ -90,7 +90,7 @@ python3 scripts/eval_rankings_py_pgrid_fast.py \
   --results-dir <RESULTS_DIR> \
   --data-dir <DATA_DIR> \
   --methods DAGFS \
-  --folds 5 \
+  --folds 10 \
   --p-min 0.05 --p-max 0.50 --p-step 0.05 --p-target 0.20
 ```
 

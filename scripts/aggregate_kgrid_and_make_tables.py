@@ -561,7 +561,7 @@ def main() -> None:
     ap.add_argument("--methods", nargs="*", default=None)
     ap.add_argument("--datasets", nargs="*", default=None, help="Optional dataset filter (names must match results).")
     ap.add_argument("--ref-method", type=str, required=True)
-    ap.add_argument("--out-dir", type=Path, default=Path("paper/tables"))
+    ap.add_argument("--out-dir", type=Path, default=Path("outputs/tables"))
     ap.add_argument("--label-suffix", type=str, default="",
                     help="Optional suffix appended to all LaTeX labels, e.g. 'brlr' -> tab:microf1_pgrid_brlr.")
     ap.add_argument("--caption-note", type=str, default="",
