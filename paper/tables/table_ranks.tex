@@ -1,0 +1,21 @@
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccc}
+\toprule
+Method & Micro-F1 & Macro-F1 & Hamming Loss & Micro PR-AUC & Macro PR-AUC & AvgPrec & One-error \\
+\midrule
+DAGFS & 2.00 & 1.60 & 2.07 & 2.07 & 2.53 & 2.20 & 2.20 \\
+LRMFS & 4.87 & 5.13 & 4.53 & 5.20 & 5.33 & 5.40 & 5.07 \\
+GRRO & 3.40 & 3.00 & 3.33 & 2.87 & 2.33 & 2.73 & 2.60 \\
+SRFS & 4.00 & 3.53 & 4.67 & 3.53 & 3.40 & 3.60 & 3.67 \\
+SCNMF & 4.47 & 5.40 & 4.80 & 5.47 & 6.00 & 5.53 & 5.60 \\
+LSMFS & 6.63 & 7.23 & 6.37 & 7.10 & 7.17 & 6.83 & 6.83 \\
+LRDG & 6.50 & 6.57 & 6.30 & 6.23 & 5.97 & 5.97 & 6.17 \\
+RFSFS & 4.13 & 3.53 & 3.93 & 3.53 & 3.27 & 3.73 & 3.87 \\
+\bottomrule
+\end{tabular}
+\caption{Average ranks across datasets at 20\% selected features (lower is better). Friedman tests: Micro-F1 ($\chi^2$=42.03, $p$=5.14e-07); Macro-F1 ($\chi^2$=64.79, $p$=1.66e-11); Hamming Loss ($\chi^2$=36.73, $p$=5.28e-06); Micro PR-AUC ($\chi^2$=55.03, $p$=1.47e-09); Macro PR-AUC ($\chi^2$=59.75, $p$=1.7e-10); AvgPrec ($\chi^2$=49.02, $p$=2.25e-08); One-error ($\chi^2$=50.21, $p$=1.31e-08).}
+\label{tab:ranks_pgrid}
+\end{table}

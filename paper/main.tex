@@ -1,0 +1,775 @@
+\documentclass[final,3p,times]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{pifont}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{pdflscape}
+
+
+\biboptions{numbers,sort&compress}
+
+\theoremstyle{plain}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue!50!black,
+	citecolor=blue!50!black,
+	urlcolor=blue!50!black
+}
+
+\newcommand{\projectname}{DAGFS}
+
+\title{DAGFS: Directed Graph-Regularized Multi-Label Feature Selection with Two-Sided Evidence}
+\author[inst1]{Filippo Casu}
+\ead{fcasu1@uniss.it}
+
+\author[inst1]{Andrea Lagorio}
+\ead{lagorio@uniss.it}
+
+\author[label2]{Giuseppe A. Trunfio\corref{cor1}}
+\ead{trunfio@uniss.it}
+\cortext[cor1]{Corresponding author}
+
+\address[inst1]{Department of Engineering, University of Sassari, Italy}
+\journal{Knowledge Based Systems}
+
+\begin{document}
+\begin{frontmatter}
+\begin{abstract}
+Multi-label feature selection (MLFS) is a key preprocessing step for high-dimensional multi-label learning. A widely used embedded template reconstructs the label matrix from the feature matrix with structured sparsity, often under nonnegativity constraints that enable stable multiplicative updates and yield a direct feature ranking via row/group norms. However, nonnegativity can induce an \emph{expressivity bottleneck}: linear nonnegative models are monotone and cannot represent ``decreasing evidence'' (labels triggered by low feature values) without leaving the nonnegative optimization class. Moreover, label-dependence regularizers are frequently implemented via \emph{symmetric} coupling, which can oversmooth predictors and lead to negative transfer when supervision quality is heterogeneous across labels. We propose \emph{DAGFS}, an embedded nonnegative MLFS method that retains the nonnegative reconstruction template while explicitly addressing these two failure modes. DAGFS combines (i) a \emph{signed-deviation feature lift} that injects two-sided feature evidence into nonnegative reconstruction, (ii) \emph{reliability-aware instance reweighting} that stabilizes learning under uneven supervision, and (iii) a \emph{directed label-transfer graph} that controls the direction of correlation transfer to mitigate oversmoothing. The resulting objective remains convex in the feature-weight matrix (for a fixed transfer graph) and is optimized by simple multiplicative updates with a paired group-sparsity penalty that ranks features in the original space. Experiments on 15 benchmark datasets under a unified feature-ratio protocol show that DAGFS achieves the best average ranks on Micro-F1, Macro-F1 and Hamming Loss, with statistically significant improvements over strong recent baselines on the main F1 metrics. 
+\end{abstract}
+
+\begin{keyword}
+multi-label learning \sep feature selection \sep nonnegative reconstruction \sep directed label coupling \sep two-sided evidence
+\end{keyword}
+
+\end{frontmatter}
+
+
+\section{Introduction}
+Multi-label learning (MLL) addresses classification problems in which each instance may be associated with multiple labels simultaneously, as in text categorization, bioinformatics, multimedia annotation, and recommendation systems \cite{tsoumakas2007overview,zhang2014review}.
+In many of these applications, instances are represented through high-dimensional feature vectors (often thousands of dimensions).
+While rich representations can be beneficial, they may also introduce redundancy, noise, and spurious correlations, which can hinder generalization and increase computational cost.
+A classical way to mitigate these issues is \emph{feature selection}, i.e., identifying a compact subset of informative variables in order to improve generalization, reduce computational costs, and increase interpretability \cite{guyon2003introfs}.
+
+In the multi-label setting, feature selection becomes more delicate than in the single-label case.
+A good subset must preserve \emph{shared signals} (useful across many labels) while still retaining \emph{label-specific cues} (useful only for a few labels), and it should account for statistical dependencies among labels \cite{zhang2014review,qian2023survey}.
+These dependencies are not merely a modeling convenience: ignoring them can lead to unstable predictors, while exploiting them can improve robustness when labels co-occur or exhibit structured correlations \cite{zhang2014review,qian2023survey}.
+At the same time, real-world multi-label datasets are often \emph{heterogeneous} in supervision: some labels are frequent and well-supported, whereas others are rare, noisy, or under-annotated, making learning uneven across labels \cite{charte2015imbalance}.
+
+A large family of multi-label feature selection (MLFS) methods adopts an \emph{embedded reconstruction-based} formulation \cite{qian2023survey}.
+In these approaches, the label matrix $Y$ is approximated by a reconstruction from the input features $X$ through a weight matrix $W$, and feature selection is induced by structured sparsity on $W$.
+Intuitively, this turns MLFS into learning a label-reconstruction map while simultaneously forcing many feature rows of $W$ to vanish, so that only a subset of features remains active.
+A particularly practical instantiation is to impose \emph{nonnegativity} constraints (e.g., $X\ge 0$ and $W\ge 0$), yielding a \emph{nonnegative reconstruction} objective: labels are reconstructed as additive combinations of nonnegative feature contributions.
+This design is attractive because it leads to simple multiplicative-update algorithms with monotone descent guarantees in closely related nonnegative factorization problems \cite{lee2000nmf}, and it produces an immediate ranking of features via row-wise group norms under standard group-sparsity penalties \cite{nie2010l21}.
+Moreover, nonnegative embedded objectives have been repeatedly used as effective, scalable templates in MLFS, often combined with correlation-aware regularization \cite{qian2023survey,Braytee_2017_CMFS}.
+
+Despite these benefits, nonnegative reconstruction introduces two limitations that are easy to overlook.
+The first is \emph{expressivity}.
+With nonnegativity, each feature can only contribute additively: increasing a feature can increase the reconstructed label score, but \emph{low} feature values cannot act as explicit evidence in the opposite direction within the same linear, nonnegative parametrization.
+In dense or normalized representations, however, it is common that certain labels are indicated by \emph{low} values (relative to a baseline) rather than high values, and capturing this kind of two-sided evidence may require additional modeling flexibility.
+
+The second limitation concerns how label dependencies are typically enforced.
+Many reconstruction-based MLFS methods incorporate correlations through \emph{symmetric} smoothing mechanisms (e.g., graph/Laplacian-style regularizers that encourage similar predictors for correlated labels), a strategy that is well-motivated when supervision is reasonably balanced across labels \cite{qian2023survey,cai2011gnmf}.
+When supervision is heterogeneous, however, symmetric coupling can lead to \emph{oversmoothing}, i.e., predictors associated with weak or noisy labels being pulled toward an average dominated by stronger labels, or vice versa.
+In the broader transfer-learning literature, harmful information sharing of this kind is often discussed under the umbrella of \emph{negative transfer}, namely situations in which transferring information degrades performance rather than improving it \cite{pan2010transfer,weiss2016transfer}. In this context, this work proposes a remedy that stays within the computationally appealing embedded nonnegative framework. Rather than abandoning nonnegative reconstruction (or introducing substantially heavier optimization), we preserve multiplicative updates and group-norm ranking, and address the two issues above by reshaping (i) the \emph{feature evidence} available to the model and (ii) the \emph{directionality} of correlation transfer.
+
+In particular, we introduce \emph{Directed Asymmetric Graph Feature Selection} (\emph{DAGFS}) and make three contributions. First, we propose a signed-deviation lift that maps each feature to two nonnegative deviation channels, enabling decreasing evidence while keeping $W\ge 0$, multiplicative updates, and ranking by paired group norms in the original feature space. Second, we introduce instance reweighting driven by a label-support prior to reduce variance when supervision density is heterogeneous, and we propagate this weighting consistently to the components that estimate label similarity. Finally, we build a row-stochastic directed label-transfer graph that biases information flow from rarer to more reliable labels (with top-$K$ sparsification) to mitigate symmetric oversmoothing; we show that the resulting directed coupling term remains well-behaved for optimization. We evaluate DAGFS on 15 benchmark datasets under a unified feature-ratio ($p$-grid) protocol with fixed hyperparameters, report statistical tests and additive ablations, and release a reference implementation for full reproducibility.
+
+The remainder of the paper is organized as follows. Section~2 reviews related work in multi-label feature selection. Section~3 introduces DAGFS and its optimization procedure. Section~4 describes the experimental protocol and reports the results. Section~5 concludes the paper and discusses future directions.
+
+\section{Related work}
+\label{sec:sota}
+
+Multi-label learning (MLL) considers settings in which each instance can be associated with multiple labels, often with non-trivial label dependencies and highly heterogeneous label frequencies. These properties make feature selection fundamentally different from the single-label case: a feature subset should retain signals that are shared across labels while preserving label-specific cues, and it should do so in a way that respects label structure. General MLL surveys summarize how these aspects drive the design of learning objectives and evaluation protocols \cite{zhang2014review}, while more recent MLFS surveys organize the field by how methods fuse label information and whether they address correlation, noise, and missing supervision as first-class issues \cite{qian2023survey}.
+
+A first wave of MLFS methods followed the filter paradigm, scoring features through information-theoretic criteria computed against the label set and controlling redundancy through heuristics or greedy selection. Representative examples include multivariate mutual information formulations for multi-label dependence \cite{Lee_2013_PMU} and interaction-information criteria that approximate higher-order effects efficiently \cite{Lee_2015_D2F}, as well as extensions of max-dependency/min-redundancy principles to multi-label targets \cite{Lin_2015}. These approaches are attractive for their simplicity and classifier-agnostic nature, but their estimators can become unreliable in high-dimensional regimes, and label dependencies are often captured only implicitly through aggregation rather than modeled explicitly.
+
+This motivated a shift toward embedded and optimization-based MLFS, where feature selection is performed while learning a predictive (or reconstructive) model under sparsity-inducing regularization. A common view interprets MLFS as a multi-task problem with one task per label, where structured sparsity (e.g., $\ell_{2,1}$) promotes a compact feature subset shared across labels. For instance, multi-task joint feature selection decomposes label-related and label-independent components to balance shared and label-specific information \cite{he2015mtjfs}. In parallel, correlation-aware embedded formulations introduced explicit coupling across labels: correlated multi-label feature selection \cite{Gu_2011} is an early and influential example that regularizes the label-wise weight matrix so that correlated labels exhibit consistent feature relevance patterns, thereby linking feature selection with an explicit notion of label dependence.
+
+Subsequent work has increasingly treated label correlation as a learnable regularizer, often implemented via graphs, low-rank structure, or joint latent representations. The distinction between global and local label correlation is particularly relevant: global correlations reflect dataset-level co-occurrence, while local correlations capture neighborhood-dependent interactions; the GLOCAL framework formalizes this duality and shows the value of combining both signals \cite{zhu2018glocal}. Inspired by this perspective, modern MLFS methods often couple selection with latent structure preservation. GRRO \cite{Zhang_2020_GRRO} recasts relevance and redundancy as a unified global optimization problem that accounts jointly for feature relevance, feature redundancy, and label relevance (via label correlation), avoiding purely greedy selection. Related embedded approaches similarly combine correlation mining and redundancy control within joint objectives \cite{fan2022lffs}, reinforcing a broader trend: high-performing MLFS increasingly emerges from co-designing selection with label-structure modeling rather than treating correlation as a fixed pre-processing artifact.
+
+Graph- and manifold-regularized formulations provide another influential family, enforcing smoothness with respect to instance or label geometry. Typical objectives preserve neighborhood relations or manifold structure after selection, which can improve robustness to noise but may be sensitive to graph construction and density heterogeneity. Examples include manifold-regularized discriminative feature selection \cite{Zhang_2019_MDFS} and constraint-based Laplacian score variants adapted to the multi-label setting \cite{Huang_2018_MCLS}. Complementary embedded formulations jointly perform feature selection and classification within a single objective, strengthening the coupling between the selected subset and downstream prediction \cite{huang2018jfsc}. While effective, these methods can be brittle when neighborhoods or correlations are poorly estimated under imbalance or incomplete supervision.
+
+Recent work also emphasizes that “label correlation” is not monolithic and may evolve with the selected feature subset. Some methods distinguish different types of labels and adjust selection pressure accordingly \cite{Zhang_2019_LRFS}, while others estimate correlations adaptively during optimization. ROAD \cite{zhang2023road} integrates correlation estimation into the selection process to reduce mismatch between a fixed correlation graph and the evolving representation, and LCIFS \cite{fan2024lcifs} similarly targets joint learning of correlation information and feature redundancy control. Along another axis, several contributions consider how negative, missing, or ambiguous labels affect what constitutes evidence for selection. For example, MLFSGLOCAL stresses that skewed label-frequency regimes can be overlooked in MLFS design and leverages explicit global/local correlations in an embedded objective \cite{Faraji_2024_MLFSGLOCAL}, while NCMFS incorporates negative label information via a mirrored label-weight structure to exploit both positive and negative evidence under ambiguous supervision \cite{li2025ncmfs}.
+
+Finally, graph representation learning has begun to influence MLFS by enabling richer relational modeling between features and labels beyond fixed Laplacians. SAGRL \cite{Ruan_2024} exemplifies this direction by constructing feature--label subgraphs and using graph representation learning to preserve fine-grained associations that may be missed by lower-order correlation measures. These methods can be powerful, but they introduce additional modeling and computational complexity and raise practical questions about stability under imbalance and interpretability of the selected subset.
+
+Overall, the literature shows a progression from label-aggregated filter criteria \cite{Lee_2013_PMU,Lee_2015_D2F,Lin_2015} to embedded, correlation-aware optimization \cite{Gu_2011,he2015mtjfs,Zhang_2020_GRRO,fan2022lffs}, and more recently to adaptive correlation learning and graph-based representation approaches \cite{zhang2023road,fan2024lcifs,Ruan_2024}. At the same time, surveys highlight recurring practical friction points \cite{qian2023survey}: correlation is often modeled as symmetric and stationary; supervision quality and density can vary substantially across labels; and negative/missing/ambiguous label evidence is not treated uniformly across objectives. These observations motivate embedded MLFS designs that remain computationally simple while improving robustness to heterogeneous supervision and reducing harmful information sharing across labels.
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proposed Method: DAGFS}\label{sec:method}
+Let $X\in\mathbb{R}^{n\times d}$ denote the (training-fold) feature matrix and
+$Y\in\{0,1\}^{n\times L}$ the binary label matrix, where $n$ is the number of instances,
+$d$ the number of original features, and $L$ the number of labels.
+Throughout, we adopt the standard embedded MLFS template: we learn a nonnegative weight matrix
+$W\in\mathbb{R}_+^{d'\times L}$ (with $d'=d$ without lifting and $d'=2d$ with lifting) and obtain
+a feature ranking from row-wise (or group-wise) norms of $W$.
+We write $w_\ell\in\mathbb{R}_+^{d'}$ for the $\ell$-th column of $W$ (the predictor for label $\ell$),
+and $W_{j:}$ for its $j$-th row.
+
+For each training fold, DAGFS outputs a \emph{single} global feature ranking in two phases.
+\emph{(i) Training-only construction.} From $(X_{\mathrm{train}},Y_{\mathrm{train}})$ we build:
+(a) a nonnegative lifted feature matrix $\tilde X$, (b) instance weights $s$ and reweighted matrices
+$(\tilde X_s,Y_s)$, and (c) a sparse row-stochastic directed transfer matrix $C$ controlling label-to-label transfer.
+\emph{(ii) Embedded optimization.} We solve a convex (in $W$) nonnegative group-sparse objective via multiplicative updates
+and rank original features by (paired) group norms. The lift increases expressivity, but the final ranking remains in the
+original feature space.
+
+DAGFS addresses two practical failure modes of nonnegative reconstruction-based MLFS:
+(i) a \emph{monotonicity barrier} under nonnegativity, where features can only provide positive evidence,
+and (ii) \emph{oversmoothing} under symmetric correlation regularization when supervision reliability varies across labels.
+Accordingly, DAGFS combines three interpretable ingredients:
+(a) two-sided feature evidence via a signed-deviation lift, (b) reliability-aware instance reweighting,
+and (c) directed label transfer that makes correlation sharing asymmetric and controllable.
+
+\subsection{Two-Sided Feature Evidence via Signed-Deviation Lift}
+Nonnegative embedded MLFS is attractive because it enables simple multiplicative updates; however,
+with $\tilde X\ge 0$ and $W\ge 0$, each feature contributes to a label score through a nonnegative linear combination,
+which is monotone non-decreasing in each feature coordinate. This becomes restrictive whenever a label is indicated by
+\emph{low} feature values (common in dense, normalized representations), i.e., when useful evidence is inherently two-sided.
+
+We enrich the hypothesis class at the \emph{feature} level while keeping the label space unchanged.
+Let $\mathbf{1}\in\mathbb{R}^{n\times 1}$ be the all-ones vector and let
+$\mu\in\mathbb{R}^{1\times d}$ be the per-feature mean computed on the training fold only.
+We define the center-split signed-deviation lift
+\begin{equation}
+	X^{+} = (X-\mathbf{1}\mu)_+,\qquad
+	X^{-} = (\mathbf{1}\mu-X)_+,\qquad
+	\Phi(X) = [X^{+},\,X^{-}] \in \mathbb{R}_{+}^{n\times 2d},
+\end{equation}
+where $(\cdot)_+=\max(\cdot,0)$ is applied elementwise, and we set $\tilde X=\Phi(X)$ (unless stated otherwise).
+Intuitively, $X^{+}$ measures ``how much above the training-fold center'' a feature is, while $X^{-}$ measures
+``how much below'' it is.
+
+\paragraph{Why the lift matters under nonnegativity.}
+The next statement makes explicit the monotonicity barrier and how the lift removes it.
+
+\begin{proposition}[Monotonicity barrier and lift expressivity]\label{prop:mono_lift}
+	Consider a single label and a single original scalar feature value $x\ge 0$.
+	Without lifting, any nonnegative linear contribution has the form $g(x)=wx$ with $w\ge 0$ and is thus monotone non-decreasing in $x$.
+	After lifting around $\mu$, the contribution can take the form
+	$g_\mu(x)=a(x-\mu)_+ + b(\mu-x)_+$ with $a,b\ge 0$, which can encode ``low-value evidence'' for $x<\mu$ via the $(\mu-x)_+$ channel,
+	while preserving nonnegativity and the multiplicative-update template.
+\end{proposition}
+
+A useful algebraic view of the lift is the following identity, which we will implicitly rely on when interpreting the $(+/-)$ channels.
+
+\begin{lemma}[Lift identities]\label{lem:lift_identities}
+	For any scalar $x$ and center $\mu$, let $x^{+}=(x-\mu)_+$ and $x^{-}=(\mu-x)_+$.
+	Then $x-\mu=x^{+}-x^{-}$ and $|x-\mu|=x^{+}+x^{-}$.
+	Thus, the lift provides a nonnegative encoding that retains access to both signed deviations and their magnitude.
+\end{lemma}
+
+\subsection{Directed Label Transfer and Reliability-Aware Reweighting}\label{sec:directed_reweight}
+In many multi-label datasets, supervision density varies widely across labels.
+We use training-fold label frequency as a simple proxy for reliability:
+\begin{equation}
+	f_\ell \;=\; \sum_{i=1}^{n} Y_{i\ell} + 1,
+\end{equation}
+where the $+1$ prevents degenerate weights and matches the implementation in \texttt{dagfs\_v2.py}.
+We define a rarity prior $p\in\mathbb{R}_+^{L}$ by
+\begin{equation}
+	p_\ell \propto f_\ell^{-\gamma}, \qquad \sum_{\ell=1}^L p_\ell = 1,
+\end{equation}
+and assign an instance weight proportional to how much rare-label supervision the instance carries:
+\begin{equation}
+	s_i \;=\; 1 + \kappa \langle y_i, p\rangle,
+\end{equation}
+followed by clipping $s_i\leftarrow \min(s_i,s_{\max})$ and rescaling $s\leftarrow s/\mathrm{mean}(s)$ for numerical stability.
+Let $D_s=\mathrm{diag}(\sqrt{s})$ and define the reweighted matrices $\tilde X_s=D_s\tilde X$ and $Y_s=D_sY$.
+We use this same reweighting when estimating label similarity, so that correlations are not dominated by labels with abundant positives.
+
+\paragraph{Directed transfer graph.}
+Let $S\in[0,1]^{L\times L}$ be the cosine similarity between \emph{reweighted} label indicator vectors, i.e.,
+\begin{equation}
+	S_{m\ell} \;=\; \frac{\langle (Y_s)_{:m}, (Y_s)_{:\ell}\rangle}{\|(Y_s)_{:m}\|_2\,\|(Y_s)_{:\ell}\|_2},\qquad S_{\ell\ell}=0,
+\end{equation}
+and we additionally clamp negative values to zero (as in the code) to obtain a nonnegative similarity.
+We construct a row-stochastic directed transfer matrix $C\in\mathbb{R}_+^{L\times L}$ where
+$C_{m\ell}$ encodes the \emph{outgoing} transfer mass from label $m$ (teacher) to label $\ell$ (student):
+\begin{equation}\label{eq:C_def}
+	C_{m\ell} \;\propto\; S_{m\ell}\Big(\frac{f_m}{f_\ell}\Big)^{\tau},\qquad C_{\ell\ell}=0,\qquad \sum_{\ell=1}^L C_{m\ell}=1.
+\end{equation}
+Optionally, we keep only the top-$K$ outgoing edges per row before normalization (row-wise sparsification), which improves stability and reduces cost.
+
+\paragraph{How directionality acts in the regularizer.}
+DAGFS uses the penalty $\|W(I-C)\|_F^2$.
+Since $w_\ell$ denotes the $\ell$-th column of $W$, expanding by columns yields
+\begin{equation}\label{eq:directed_penalty_expansion}
+	\lVert W(I-C)\rVert_F^2
+	\;=\; \sum_{\ell=1}^L \Big\lVert w_\ell \;-\; \sum_{m=1}^L w_m\,C_{m\ell} \Big\rVert_2^2.
+\end{equation}
+Thus, each predictor $w_\ell$ is encouraged to stay close to a directed, frequency-biased mixture of \emph{incoming} teachers $m$.
+Because~\eqref{eq:C_def} upweights edges from high-support labels to low-support labels, rare labels receive stronger
+incoming regularization from correlated head labels, mitigating oversmoothing in the presence of heterogeneous supervision.
+
+\subsection{Objective and Optimization}\label{sec:objective}
+All ingredients above are computed once per training fold and then kept fixed while optimizing $W$.
+DAGFS solves the nonnegative group-sparse problem
+\begin{equation}\label{eq:dagfs_obj}
+	\min_{W\ge 0}\;\; \lVert \tilde{X}_s W - Y_s \rVert_F^2
+	\;+\;\alpha \lVert W(I-C)\rVert_F^2
+	\;+\;\beta\,\Omega(W),
+\end{equation}
+where the terms respectively enforce (i) reconstruction under instance reweighting, (ii) directed label transfer,
+and (iii) group sparsity for feature selection.
+
+Without lifting, $d'=d$ and we use $\Omega(W)=\|W\|_{2,1}=\sum_{j=1}^d \|W_{j:}\|_2$.
+With center-split lifting, $d'=2d$ and $W=[W^+;W^-]$ with $W^\pm\in\mathbb{R}_+^{d\times L}$.
+To preserve interpretability and obtain a ranking in the original feature space, we use the paired group penalty
+\begin{equation}\label{eq:paired_penalty}
+	\Omega(W)\;=\;\sum_{j=1}^{d}\sqrt{\lVert W^{+}_{j:}\rVert_2^2 + \lVert W^{-}_{j:}\rVert_2^2}.
+\end{equation}
+We rank original features by the corresponding group norms in~\eqref{eq:paired_penalty} (and by $\|W_{j:}\|_2$ without lifting).
+
+\paragraph{Multiplicative updates (implementation-aligned).}
+Let $M=(I-C)(I-C)^\top$ and split it elementwise as $M=M^+-M^-$ with $M^+,M^-\ge 0$.
+We use the standard MM surrogate for $\ell_{2,1}$, yielding diagonal weights
+$D_{jj}=\big(2\|W_{j:}\|_2+\varepsilon\big)^{-1}$ (and under lifting we share the same $D_{jj}$ between the $(+,-)$ pair).
+One multiplicative-update step takes the form
+\begin{equation}\label{eq:w_update}
+	W \;\leftarrow\; W \odot
+	\frac{\tilde{X}_s^\top Y_s + \alpha W M^-}{
+		\tilde{X}_s^\top \tilde{X}_s W + \alpha W M^+ + \beta D W
+	},
+\end{equation}
+where $\odot$ and the division are elementwise, and $\varepsilon>0$ prevents division by zero.
+This is exactly the update implemented in \texttt{dagfs\_v2.py} (with precomputation of $\tilde X_s^\top\tilde X_s$ and $\tilde X_s^\top Y_s$).
+
+Algorithm~\ref{alg:dagfs} summarizes the training-fold computation producing a single ranking.
+(Your existing pseudocode can be kept, but we recommend adjusting the $C_{m\ell}$ indexing to match~\eqref{eq:C_def}--\eqref{eq:directed_penalty_expansion}.)
+
+\subsection{Theoretical Properties}\label{sec:theory}
+We include only the minimal properties needed to justify the two design claims used throughout the paper:
+(i) the lift increases expressivity under nonnegativity (Prop.~\ref{prop:mono_lift}), and
+(ii) the directed coupling remains well-behaved despite the asymmetry of $C$.
+
+\begin{lemma}[PSD of the directed coupling matrix]\label{lem:psd_M}
+	For any (not necessarily symmetric) transfer matrix $C$, the matrix
+	$M=(I-C)(I-C)^\top$ is symmetric positive semidefinite.
+\end{lemma}
+\begin{proof}
+	For any vector $z$, $z^\top M z = z^\top (I-C)(I-C)^\top z = \|(I-C)^\top z\|_2^2 \ge 0$.
+\end{proof}
+
+\begin{corollary}[Convexity of the graph penalty in $W$]\label{cor:convex_graph}
+	Since $M\succeq 0$, the directed graph penalty $\|W(I-C)\|_F^2=\mathrm{tr}(WMW^\top)$ is a convex quadratic function of $W$.
+\end{corollary}
+
+Finally, the next lemma formalizes why the paired penalty is not merely cosmetic: it is a convex group norm defined over original features,
+and it prevents lift-induced ``split'' artefacts where only the $(+)$ or only the $(-)$ component of a feature is selected.
+
+\begin{lemma}[Paired $\ell_{2,1}$ is a norm and yields lift-invariant grouping]\label{lem:paired_norm}
+	The paired penalty in~\eqref{eq:paired_penalty} is a norm (group $\ell_1$ over $\ell_2$ groups), hence convex.
+	It enforces selection at the level of original features and makes the induced ranking invariant to the $(+/-)$ splitting.
+\end{lemma}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+\section{Proposed Method: DAGFS}\label{sec:method}
+Let $X\in\mathbb{R}^{n\times d}$ be the feature matrix and $Y\in\{0,1\}^{n\times L}$ the label matrix.
+In embedded MLFS, a standard approach is to learn a weight matrix $W\in\mathbb{R}_+^{d\times L}$ that reconstructs the labels from the features (e.g., via a nonnegative least-squares objective) while enforcing row sparsity so that only a small set of features receives nonzero weights.
+The feature ranking is then obtained from row-wise (or group-wise) norms of $W$.
+
+For each training fold, DAGFS produces a single feature ranking in two phases.
+First, it constructs \emph{training-only} ingredients: (i) the signed-deviation lift $\tilde X=\Phi(X)$, (ii) reliability-aware instance weights $s$ and the corresponding reweighted matrices $(\tilde X_s,Y_s)$, and (iii) a sparse row-stochastic directed transfer matrix $C$ that encodes label-to-label information flow.
+Second, it solves a convex nonnegative group-sparse objective in $W$ via multiplicative updates and ranks original features by (paired) group norms, so the lift increases expressivity without changing what is ultimately selected.
+
+DAGFS follows this embedded template but addresses two practical limitations that repeatedly arise in nonnegative embedded MLFS.
+First, nonnegativity constraints can induce a \emph{monotonicity barrier} where a feature can only contribute positive evidence, even when low feature values are discriminative.
+Second, correlation regularization is often implemented via symmetric smoothing, which can oversimplify the label space and introduce negative transfer when supervision quality is heterogeneous across labels.
+Our design therefore combines three simple, interpretable ingredients:
+(i) \emph{two-sided feature evidence} via a signed-deviation lift that preserves nonnegativity,
+(ii) \emph{reliability-aware instance reweighting} that prevents under-represented supervision signals from being washed out in an aggregated loss,
+and (iii) \emph{directed label transfer} that controls the direction of correlation transfer to mitigate oversmoothing.
+Together, these choices retain a simple, stable nonnegative optimization and produce a single global ranking per fold.
+
+\subsection{Two-Sided Feature Evidence via Signed-Deviation Lift}
+Nonnegativity ($W\ge 0$) is convenient because it enables simple multiplicative updates; however, with nonnegative features and weights, each feature can only provide \emph{monotone positive evidence} for a label.
+This is limiting when a label is indicated by \emph{low} values of a feature (a common pattern in dense data), or more generally when discriminative evidence is inherently two-sided.
+
+We address this expressivity bottleneck at the \emph{feature} level while keeping the label space unchanged.
+Given the training-fold mean $\mu\in\mathbb{R}^{1\times d}$ (computed on the training split only), we define the \emph{center-split} signed-deviation lift:
+\begin{equation}
+  X^{+} = (X-\mathbf{1}\mu)_+,\qquad
+  X^{-} = (\mathbf{1}\mu-X)_+,\qquad
+  \Phi(X) = [X^{+},\,X^{-}] \in \mathbb{R}_{+}^{n\times 2d},
+\end{equation}
+where $(\cdot)_+=\max(\cdot,0)$ is applied elementwise.
+Intuitively, $X^{+}$ measures ``how much above average'' a feature is, while $X^{-}$ measures ``how much below average'' it is.
+We run the same embedded optimization on $\tilde X=\Phi(X)$ and map learned weights back to the original $d$ features by grouping the $(+,-)$ pair of each original feature (Section~\ref{sec:objective}).
+
+This feature-level construction is orthogonal to approaches that attempt to model ``negative evidence'' in the \emph{label} space (e.g., mirrored label-weight structures as in NCMFS \cite{li2025ncmfs}): DAGFS keeps $Y$ unchanged and instead enriches the nonnegative hypothesis class through a two-sided feature encoding.
+Practically, this matters because it retains the algorithmic simplicity of nonnegative reconstruction while allowing a feature to support a label either by being unusually \emph{high} or unusually \emph{low} relative to its training-fold center.
+
+	To clarify why lift matters, consider a single label and a single scalar feature value $x$, with a positive label driven by \emph{low} feature values, e.g., $y=1$ when $x<\mu-\varepsilon$ and $y=0$ otherwise (for some training-fold center $\mu$ and margin $\varepsilon>0$).
+	In a nonnegative reconstruction model without lifting, the contribution of $x$ to the prediction has the form $g(x)=wx$ with $w\ge 0$, so $g$ cannot \emph{increase} when $x$ decreases: this makes it difficult to express ``low-value evidence'' under the nonnegativity constraint.
+	With the center-split lift, the negative-deviation channel $x^{-}=(\mu-x)_+$ increases as $x$ moves below $\mu$, so a nonnegative term $b\,x^{-}$ with $b\ge 0$ can directly encode the desired pattern while keeping the optimization fully nonnegative.
+
+	\smallskip
+	\noindent\textbf{Summary.} The lift enriches the nonnegative hypothesis class at the feature level, enabling two-sided evidence without changing the optimization template or the feature-ranking mechanism.
+
+\subsection{Directed Label Transfer and Reliability-Aware Reweighting}
+In practice, supervision density varies widely across labels, so the quality of label-wise estimators and correlation statistics can be heterogeneous.
+We use the training-fold label frequency $f_\ell=\sum_i Y_{i\ell}$ as a simple proxy of \emph{estimation reliability}: labels with fewer positives tend to yield noisier predictors and less stable correlation estimates.
+To reduce the variance induced by this heterogeneity, we introduce an inverse-support prior over labels $p_\ell\propto (f_\ell+1)^{-\gamma}$ (the $+1$ avoids degenerate weights), and we upweight training instances proportionally to how much low-support supervision they carry:
+\begin{equation}
+  s_i \;=\; 1 + \kappa \langle y_i, p\rangle,
+\end{equation}
+followed by clipping and renormalization for numerical stability.
+In the objective, this corresponds to an instance-reweighted least-squares term using $D_s=\mathrm{diag}(\sqrt{s})$, i.e., sample $i$ contributes proportionally to $s_i$ inside the squared loss.
+We also use the same reweighting when computing label similarity, so that correlations estimated from low-support supervision are not dominated by labels with abundant positives.
+
+To explicitly encode \emph{asymmetric borrowing}, we define a directed transfer matrix $C$ from a label similarity matrix $S$.
+Concretely, $S$ is the cosine similarity between \emph{instance-reweighted} label indicator vectors (i.e., between columns of $Y_s=D_sY$), and we bias transfer from high-support (more reliable) labels toward low-support (less reliable) labels:
+\begin{equation}
+  C_{\ell m} \;\propto\; S_{\ell m}\,\Big(\frac{f_\ell+1}{f_m+1}\Big)^{\tau},\qquad C_{\ell\ell}=0,
+\end{equation}
+followed by (optional) top-$K$ sparsification per row and row-normalization so that $\sum_m C_{\ell m}=1$.
+The associated regularizer
+\begin{equation}
+  \lVert W(I-C)\rVert_F^2 \;=\; \sum_{\ell=1}^L \Big\lVert w_\ell - \sum_m w_m\,C_{m\ell} \Big\rVert_2^2
+\end{equation}
+makes the behaviour explicit: each label predictor $w_\ell$ is encouraged to stay close to a directed, frequency-biased average of the predictors that \emph{point to} $\ell$ (incoming transfer).
+	Since high-support predictors place more outgoing mass on correlated low-support predictors, low-support labels are regularized toward mixtures of more reliable predictors, mitigating oversmoothing and negative transfer under heterogeneous supervision.
+	Unlike symmetric Laplacian smoothing, the coupling is directional and allows reliability-aware control over where information flows, mitigating oversmoothing when supervision quality is heterogeneous.
+
+	\smallskip
+	\noindent\textbf{Summary.} Instance reweighting and directed coupling make correlation transfer \emph{selective}---still available when it helps, but less likely to dominate learning when supervision statistics are noisy or highly imbalanced.
+
+\subsection{Objective and Optimization}\label{sec:objective}
+Let $\tilde{X}$ denote the feature matrix used by DAGFS: $\tilde{X}=X$ without lifting and $\tilde{X}=\Phi(X)$ with the center-split lift.
+Let $D_s=\mathrm{diag}(\sqrt{s})$ and define $\tilde{X}_s=D_s\tilde{X}$ and $Y_s=D_sY$.
+Both the instance weights $s$ and the directed transfer matrix $C$ are computed once per training fold from $(X_{\mathrm{train}},Y_{\mathrm{train}})$ and then kept fixed during the multiplicative-update iterations (no adaptive graph learning in the core method).
+DAGFS solves
+\begin{equation}
+  \min_{W\ge 0}\;\;\lVert \tilde{X}_s W - Y_s \rVert_F^2
+  \;+\;\alpha \lVert W(I-C)\rVert_F^2
+  \;+\;\beta\,\Omega(W),
+\end{equation}
+where $\Omega$ is a group sparsity penalty.
+The three terms respectively enforce (i) predictive reconstruction under reliability-aware instance weighting, (ii) directed correlation transfer among label predictors, and (iii) group sparsity for selecting a small set of features.
+Without lifting, $\Omega(W)=\lVert W\rVert_{2,1}=\sum_{j=1}^d \lVert W_{j:}\rVert_2$ promotes row sparsity and thus feature selection.
+With the center-split lift, $W\in\mathbb{R}_{+}^{2d\times L}$ decomposes as $W=[W^{+};W^{-}]$ and we use a \emph{paired} penalty
+\begin{equation}
+  \Omega(W)=\sum_{j=1}^{d}\sqrt{\lVert W^{+}_{j:}\rVert_2^2 + \lVert W^{-}_{j:}\rVert_2^2},
+\end{equation}
+which selects/discounts both deviations for the same original feature jointly.
+We rank original features by the corresponding group norms (paired norms under the lift).
+
+We optimize using multiplicative updates that preserve nonnegativity.
+For the $\ell_{2,1}$ term we use a standard majorization--minimization surrogate, and for the directed coupling we write $M=(I-C)(I-C)^\top$ and split it as $M=M^+-M^-$ with $M^+,M^-\ge 0$ (elementwise), which yields a nonnegative numerator/denominator update.
+Let $D$ be the diagonal reweighting induced by the $\ell_{2,1}$ surrogate, e.g.\ $D_{jj}=\frac{1}{2\lVert W_{j:}\rVert_2+\varepsilon}$ (and for the center-split lift, the same $D_{jj}$ is shared by the $(+,-)$ pair).
+One iteration takes the standard nonnegative form
+\begin{equation}
+  W \;\leftarrow\; W \odot
+  \frac{\tilde{X}_s^\top Y_s + \alpha W M^-}{
+    \tilde{X}_s^\top \tilde{X}_s W + \alpha W M^+ + \beta D W
+  },
+\end{equation}\label{w_update}
+where $\odot$ and the division are elementwise.
+After optimization, DAGFS outputs a single ranking per fold by sorting group norms in descending order.
+
+Algorithm~\ref{alg:dagfs} summarizes the complete training-fold computation that produces a feature ranking.
+It makes explicit the two key phases: (1) building the lifted and instance-reweighted data matrices and the directed transfer graph from the training split only (no leakage), and (2) optimizing the nonnegative group-sparse weights via multiplicative updates.
+The final ranking is obtained in the \emph{original} feature space through paired group norms, so the lift increases expressivity without changing what is ultimately selected.
+
+{\setlength{\parskip}{0pt}%
+	\SetAlFnt{\footnotesize}%
+	\begin{algorithm}[t]
+		\DontPrintSemicolon
+		\caption{DAGFS (training-fold feature ranking)}
+		\label{alg:dagfs}
+		\KwData{Training features $X\in\mathbb{R}^{n\times d}$, labels $Y\in\{0,1\}^{n\times L}$; hyperparameters $\alpha,\beta,\gamma,\kappa,\tau$, top-$K$, iterations $T_{\max}$.}
+		\KwResult{Feature ranking $\pi$ (descending).}
+		$\mu \leftarrow \mathrm{mean}(X)$ \tcp*[r]{train only}\;
+		$X^{+}\leftarrow (X-\mathbf{1}\mu)_+$\;
+		$X^{-}\leftarrow (\mathbf{1}\mu-X)_+$\;
+		$\tilde{X}\leftarrow [X^{+},X^{-}]$ \tcp*[r]{lift}\;
+		$f_\ell \leftarrow \sum_i Y_{i\ell}$\;
+		$p_\ell \propto (f_\ell+1)^{-\gamma}$\;
+		Normalize $p$\;
+		$s_i \leftarrow 1 + \kappa \langle y_i, p\rangle$ \tcp*[r]{instance weights}\;
+		Clip and rescale $s$\;
+		$D_s \leftarrow \mathrm{diag}(\sqrt{s})$\;
+		$\tilde{X}_s \leftarrow D_s\tilde{X}$\;
+		$Y_s \leftarrow D_sY$\;
+		$S \leftarrow \mathrm{cosine\_sim}(\text{columns of }Y_s)$\;
+		Set $S_{\ell\ell}\leftarrow 0$ and clamp negatives to $0$\;
+		$C_{m\ell} \propto S_{m\ell}\big(\frac{f_m+1}{f_\ell+1}\big)^{\tau}$ \tcp*[r]{directed transfer $m\to\ell$}\;
+		Top-$K$ sparsify rows of $C$ and row-normalize so $\sum_{\ell} C_{m\ell}=1$\;
+		$M \leftarrow (I-C)(I-C)^\top$\;
+		Split $M=M^{+}-M^{-}$ with $M^{+},M^{-}\ge 0$ \tcp*[r]{MU split}\;
+		Initialize $W\ge 0$\;
+		Precompute $\tilde{X}_s^\top \tilde{X}_s$ and $\tilde{X}_s^\top Y_s$\;
+		\For{$t=1$ \KwTo $T_{\max}$}{
+			Compute paired group norms and surrogate weights $D$ for $\Omega(W)$\;
+			Update $W$ according to Eq.~(\ref{w_update})\;
+		}
+		Compute paired scores $g_j$ and set $\pi \leftarrow \mathrm{argsort}(-g)$\;
+	\end{algorithm}
+}
+
+
+
+\subsection{Theoretical Properties}
+We now summarize a few properties that clarify \emph{why} the ingredients above are useful and \emph{why} the optimization remains well-behaved.
+We emphasize that the novelty of DAGFS is not a complicated optimizer but the way the hypothesis class and the label coupling are shaped to better handle two-sided evidence and heterogeneous supervision.
+
+\begin{proposition}[Monotonicity barrier and lift expressivity]
+Consider a single label and a single original feature value $x\in\mathbb{R}$.
+Without lifting, any nonnegative contribution has the form $g(x)=wx$ with $w\ge 0$, hence $g$ is monotone non-decreasing in $x$.
+With center-split lifting around $\mu$, the contribution can take the form
+$g_\mu(x)=a(x-\mu)_+ + b(\mu-x)_+$ with $a,b\ge 0$, which can be non-monotone and can encode ``low-value'' evidence for $x<\mu$ via the $(\mu-x)_+$ term.
+\end{proposition}
+
+The next result clarifies why the directed coupling remains well-behaved even though $C$ is asymmetric.
+Although $C$ is not a Laplacian and need not be symmetric, the penalty can still be written as a convex quadratic in $W$.
+Let $M=(I-C)(I-C)^\top$ so that $\lVert W(I-C)\rVert_F^2 = \mathrm{tr}(WMW^\top)$.
+
+\begin{lemma}[PSD of the directed coupling matrix]
+For any (not necessarily symmetric) matrix $C$, $M$ is symmetric positive semidefinite.
+\end{lemma}
+\begin{proof}
+For any vector $z$, $z^\top M z = z^\top (I-C)(I-C)^\top z = \lVert (I-C)^\top z\rVert_2^2 \ge 0$.
+\end{proof}
+
+\begin{corollary}[Convexity of the graph penalty in $W$]
+Since $M\succeq 0$, the directed graph penalty $\lVert W(I-C)\rVert_F^2 = \mathrm{tr}(WMW^\top)$ is convex in $W$.
+\end{corollary}
+
+\begin{proposition}[Convexity of the DAGFS objective]
+For fixed data $(\tilde{X}_s,Y_s)$ and transfer matrix $C$, the DAGFS objective in \Cref{sec:objective} is convex in $W$ over the convex feasible set $\{W\ge 0\}$.
+\end{proposition}
+\begin{proof}
+The reconstruction term is a convex quadratic in $W$, the graph term is convex by the previous corollary, and $\Omega$ is a norm (hence convex). The sum of convex functions with a convex constraint set remains convex.
+\end{proof}
+
+\noindent\textbf{Interpretation}
+Convexity in $W$ (for fixed $C$ and fixed reweighting) helps explain why simple multiplicative updates are stable in practice: the objective does not contain the nonconvex bilinearities typical of matrix-factorization MLFS methods.
+In our implementation we keep $C$ fixed per fold after building it from the training labels, and optimize only $W$.
+
+To complete the picture, we make explicit two elementary facts that are used implicitly throughout our discussion of two-sided evidence and pairing.
+First, the next lemma spells out the basic algebra of the signed-deviation lift, showing that it provides (through a nonnegative encoding) access to both the \emph{signed} deviation and its \emph{magnitude}.
+Second, we then formalize that the paired sparsity penalty used for ranking is a convex group norm, which explains why it yields a lift-invariant ranking and avoids lift-induced artefacts by design.
+
+\begin{lemma}[Lift identities]
+For any scalar feature value $x$ and mean $\mu$, define $x^{+}=(x-\mu)_+$ and $x^{-}=(\mu-x)_+$.
+Then $x-\mu=x^{+}-x^{-}$ and $|x-\mu|=x^{+}+x^{-}$.
+Thus, the lift makes both the signed deviation and the magnitude of deviation available through a nonnegative encoding.
+\end{lemma}
+
+\begin{remark}[Multi-threshold two-sided evidence]
+The center-split lift is a special case of a more general \emph{multi-threshold} two-sided encoding.
+Let $T=\{t_1,\dots,t_m\}$ be a set of thresholds (e.g., feature-wise quantiles computed on the training fold).
+Define
+\begin{equation}
+  \Phi_T(x)=\big[(x-t_1)_+,(t_1-x)_+,\dots,(x-t_m)_+,(t_m-x)_+\big]\in\mathbb{R}_+^{2m}.
+\end{equation}
+Then the center-split lift $\Phi(X)$ corresponds to $m=1$ with threshold $t_1=\mu$.
+This viewpoint makes explicit that DAGFS introduces two-sided \emph{feature evidence} (above/below thresholds) while keeping the label space unchanged, which is conceptually different from approaches that model ``negative evidence'' in the label space \cite{li2025ncmfs}.
+\end{remark}
+
+The next lemma clarifies why pairing the $(+,-)$ components is not merely a presentational choice: it corresponds to a convex group penalty in the original feature space and yields an invariant ranking under the lift.
+\begin{lemma}[Convexity of paired $\ell_{2,1}$]
+		The paired penalty $\Omega(W)=\sum_{j=1}^{d}\sqrt{\lVert W^{+}_{j:}\rVert_2^2 + \lVert W^{-}_{j:}\rVert_2^2}$ is a norm (a group $\ell_1$ over $\ell_2$ groups), hence convex.
+		It promotes selecting original features as groups and makes ranking invariant to splitting a feature into $(+,-)$ components.
+\end{lemma}
+
+Taken together, the formulation preserves a simple nonnegative embedded template (convex in $W$ per fold, optimized by multiplicative updates) while expanding the representational capacity through two-sided feature evidence and controlling correlation transfer through directed coupling. We now turn to a comprehensive empirical evaluation.
+
+\section{Experiments}
+This section evaluates DAGFS against recent embedded MLFS baselines under a unified protocol, and reports statistical tests and additive ablations under a consistent evaluator (ML-kNN).
+
+\subsection{Experimental setup}
+We follow the standard MLFS evaluation pipeline: for each dataset and fold, a method produces a \emph{single} feature ranking from the training split only; we then select the top-$k$ features and evaluate a downstream multi-label classifier on the reduced representation.
+
+In the following, we use 15 benchmark datasets drawn from the Mulan and Yahoo repositories, spanning text, image and bioinformatics domains.
+These benchmarks are widely used in MLFS evaluation, which enables a direct qualitative comparison with prior work while covering heterogeneous regimes in sample size ($n$), dimensionality ($d$), label cardinality ($L$), and imbalance.
+Concretely, we include nine Yahoo topic datasets (\emph{Arts}, \emph{Business}, \emph{Education}, \emph{Entertain}, \emph{Health}, \emph{Recreation}, \emph{Reference}, \emph{Science}, \emph{Social}) together with six canonical Mulan benchmarks (\emph{Emotions}, \emph{Genbase}, \emph{Medical}, \emph{Yeast}, \emph{Bibtex}, \emph{Corel5k}).
+This composition covers both moderate-label problems and large-label settings such as \emph{Bibtex} and \emph{Corel5k}, where label frequencies are highly skewed and correlation estimates can be noisy.
+For each dataset we generate 5 stratified train/test splits using iterative stratification, preserving the train/test proportion of the original split.
+All folds use min--max scaling to $[0,1]$ computed on the training split and applied to the test split (no leakage).
+This choice of scaling matches the nonnegative reconstruction template ($X\ge 0$) and makes feature magnitudes comparable across datasets without using any information from the test fold.
+
+We compare DAGFS against a compact set of recent, competitive \emph{embedded} MLFS methods that cover complementary design rationales.
+We intentionally focus on embedded selectors (rather than wrappers) because they are the closest methodological match to DAGFS and because wrapper-style search becomes prohibitive on large multi-label problems.
+The baselines below reflect three recurring themes in modern MLFS: (i) label relaxation or supervision refinement, (ii) relevance--redundancy trade-offs, and (iii) reconstruction or latent-factor models with correlation constraints.
+\begin{itemize}[leftmargin=*,itemsep=0.15em,topsep=0.15em]
+  \item \emph{LRMFS} \cite{Fan_2025_LRMFS}: relaxes the observed label matrix and jointly learns an embedded sparse selector, providing a strong reference for settings where supervision is imperfect or benefits from refinement.
+  \item \emph{LSMFS} \cite{fan2024lsmfs}: extends label relaxation by coupling it with shared-information constraints, targeting robustness when labels share latent structure while remaining partially heterogeneous.
+  \item \emph{LRDG} \cite{Zhang_2024_PR}: learns a latent representation for selection and enforces graph constraints that adapt over optimization, representing the recent trend toward correlation learning under dynamic graph regularization.
+  \item \emph{GRRO} \cite{Zhang_2020_GRRO}: an embedded relevance--redundancy formulation that balances feature--label relevance and feature--feature redundancy, often strong under linear or margin-based evaluators due to its explicit redundancy control.
+  \item \emph{RFSFS} \cite{li2023rfsfs}: a flexible sparse regularization approach designed to be robust to noise and outliers, included as a competitive sparse-regularized embedded baseline.
+  \item \emph{SRFS} \cite{Li_2025_SRFS}: a nonnegative reconstruction-based selector that supplements standard sparsity with additional mechanisms to mitigate omission and redundancy, included as a close reconstruction-style competitor.
+  \item \emph{SCNMF} \cite{he2024scnmf}: a reconstruction model based on nonnegative matrix factorization with similarity constraints, included as a recent representative of NMF-style correlation-constrained MLFS.
+\end{itemize}
+Together, these baselines cover both reconstruction-driven and relevance--redundancy driven selectors, as well as recent label-refinement and latent/graph-regularized formulations, offering a compact but methodologically diverse comparison set without diluting the experimental budget across many older variants.
+All baselines are executed with the authors' recommended settings under the same folds and protocol.
+
+Following recent MLFS literature, we evaluate each method at feature ratios $p \in \{5\%,10\%,\ldots,50\%\}$.
+For a dataset with $d$ features, we select $k(p)=\max(1,\mathrm{round}(p\,d))$ features from the ranking.
+Unless stated otherwise, ML-kNN is used as the primary downstream classifier, and $p=20\%$ is the main operating point for tabular comparisons.
+
+All preprocessing statistics used by DAGFS are computed on the training fold only (e.g., the lift mean $\mu$, label frequencies $f_\ell$, and label similarities).
+We apply top-$K$ sparsification and row-stochastic normalization to $C$ for numerical stability and interpretability.
+Unless stated otherwise, DAGFS uses fixed hyperparameters across datasets: $\alpha=\beta=0.1$, $\gamma=2$, $\kappa=1.5$, $\tau=0.5$, top-$K=10$, and 40 multiplicative iterations.
+The lifted dimension is $2d$, but feature ranking remains in the original space via paired group norms.
+
+At $p=20\%$, we summarize performance across datasets using average ranks and Friedman tests, followed by Holm-corrected paired Wilcoxon comparisons between DAGFS and each baseline (per-dataset scores averaged over folds, $\alpha=0.05$).
+
+The official reference implementation (including scripts to reproduce all tables and figures in this paper) is released at \url{https://github.com/gatrunfio/dagfs}.
+
+
+
+\subsection{Empirical Justification of Key Components}
+
+\subsubsection{Expressivity Limits of Nonnegative Reconstruction: A Synthetic Case Study}
+\label{sec:toy_monotonicity}
+The motivation for the signed-deviation lift can be stated in a simple but practically relevant form.
+Consider a nonnegative linear reconstruction term without lifting, $g(x)=w^\top x$ with $w\ge 0$ and $x\in\mathbb{R}_+^{d}$.
+Then $g$ is coordinate-wise monotone non-decreasing: if $x'\le x$ element-wise, then $g(x')\le g(x)$.
+In particular, for a scalar feature $x\in[0,1]$ with $g(x)=wx$ and $w\ge 0$, decreasing $x$ can never increase the contribution to the label.
+This \emph{monotonicity barrier} is not a corner case: in many real domains (e.g., normalized frequencies, intensities, and presence/absence indicators), a label can be associated with \emph{low} values of a feature, or more generally with deviations below a typical level.
+In such regimes, an expressive model must be able to encode two-sided evidence while retaining the simplicity and stability of nonnegative optimization.
+\begin{figure}[!tb]
+	\centering
+	\includegraphics[width=\linewidth]{figures/toy_monotonicity_panels.pdf}
+		\caption{Monotonicity barrier and two-sided evidence on a synthetic 1D task. \textbf{Left:} data distribution (positives shaded at low $x$). \textbf{Right:} nonnegative reconstruction score profiles: without lifting, $g(x)=wx$ is monotone non-decreasing; with signed-deviation lifting, the $(\mu-x)_+$ component provides decreasing evidence while preserving $W\ge 0$ and multiplicative updates.}
+		\label{fig:toy_monotonicity_panels}
+\end{figure}
+
+We illustrate the issue on a 1D synthetic dataset where the positive label is triggered by small values ($y=1$ iff $x<0.3$, with optional label noise).
+Without lifting, the score $g(x)=wx$ cannot be \emph{decreasing} in $x$ under $w\ge 0$; therefore, any threshold on $g(x)$ must trade off false positives and false negatives when the true positive region lies at low $x$.
+In contrast, the center-split lift $\Phi(x)=[(x-\mu)_+,(\mu-x)_+]$ provides a nonnegative basis in which $(\mu-x)_+$ acts as decreasing evidence, while keeping the feasible set ($W\ge 0$), the ranking mechanism (row/group norms), and the multiplicative-update optimization class unchanged.
+This is not a cosmetic constraint: simply allowing negative weights would move outside the standard nonnegative embedded template, breaking multiplicative-update applicability and weakening the interpretation of row/group norms as nonnegative feature contributions.
+
+Finally, this situation is not specific to the synthetic construction.
+Across our 15 benchmarks, decreasing evidence appears frequently under bounded/normalized feature representations.
+As a simple training-only sanity check, we compute the point-biserial correlation between each feature and label on each training fold, and count labels that have at least one feature with correlation $\le -\tau$.
+With $\tau=0.05$, the median dataset has about 34\% of labels that admit at least one such negatively associated feature on the training folds.
+Figure~\ref{fig:toy_monotonicity_panels} summarizes the synthetic construction and the resulting score profiles.
+
+
+	\begin{figure}[!tb]
+		\centering
+		\includegraphics[width=0.8\linewidth]{figures/paired_invariance_splitrate.pdf}
+		\caption{Lift-induced split artefact under an unpaired penalty (all datasets, all folds; $p=20\%$). For each dataset and fold, we select the top-$(2k)$ lifted components (with $k=\mathrm{round}(p\,d)$) and report SplitRatio: the fraction of touched original features whose $(+/-)$ components are selected asymmetrically (XOR). The paired variant yields SplitRatio $=0$ by design (not shown due to axis zoom).}
+		\label{fig:paired_invariance_splitrate}
+	\end{figure}
+
+\subsubsection{Invariance of Feature Ranking Under Lifting: Paired vs. Unpaired Penalties}
+The signed-deviation lift replaces each original feature $j\in\{1,\dots,d\}$ with two nonnegative components, $j^{+}$ and $j^{-}$, yielding a $2d$-dimensional lifted space.
+If we apply a standard $\ell_{2,1}$ penalty directly in this lifted space (i.e., independently over the $2d$ rows), the regularizer may select only one component of the pair.
+This creates a \emph{split artefact}: a feature may enter the ranking because only $j^{+}$ (or only $j^{-}$) is strong, which complicates interpretation and can distort the induced ranking in the original $d$-feature space.
+DAGFS avoids this behaviour through a \emph{paired} group penalty that treats $(j^{+},j^{-})$ as a single group.
+
+To show that pairing is a substantive design choice rather than a cosmetic constraint, we compare lifted DAGFS with the paired penalty to an \emph{unpaired} lifted variant that applies $\ell_{2,1}$ independently to each of the $2d$ lifted rows (i.e., without sharing the group reweighting between $j^{+}$ and $j^{-}$).
+We evaluate a simple sanity check that is computable on \emph{all} datasets and outer folds.
+Fix $p=20\%$ and let $k=\mathrm{round}(p\,d)$.
+For the unpaired lifted model, we first rank lifted rows by their row norms $\|W_{u:}\|_2$ and select the top-$2k$ lifted components.
+We then map each selected lifted index back to its original feature $j$ and call an original feature \emph{touched} if at least one of its components $(j^{+},j^{-})$ is selected.
+We define the \emph{SplitRatio} as the fraction of touched features for which \emph{exactly one} of the two components is selected (XOR):
+\begin{equation}
+	\mathrm{SplitRatio}
+	\;=\;
+	\frac{\#\{j:\; \mathbb{I}[j^{+}\!\in\!\mathcal{S}] \oplus \mathbb{I}[j^{-}\!\in\!\mathcal{S}] = 1\}}
+	{\#\{j:\; \mathbb{I}[j^{+}\!\in\!\mathcal{S}] \lor \mathbb{I}[j^{-}\!\in\!\mathcal{S}] = 1\}},
+\end{equation}
+where $\mathcal{S}$ denotes the selected set of lifted indices (top-$2k$), and $\oplus$ is XOR.
+
+In addition, to compare the induced selections in the original space, we derive an original-feature ranking for the unpaired model by \emph{max pooling} the paired row norms (i.e., using $\max(\|W^{+}_{j:}\|_2,\|W^{-}_{j:}\|_2)$ as the score for feature $j$) and take its top-$k$ set.
+Table~\ref{tab:paired_invariance} reports SplitRatio for the unpaired model and the Jaccard overlap between the top-$k$ original-feature sets produced by paired DAGFS (our paper ranking) and by the unpaired model (after max pooling).
+Figure~\ref{fig:paired_invariance_splitrate} shows the SplitRatio distribution across outer folds for each dataset.
+Overall, the unpaired penalty yields severe split artefacts on most datasets (SplitRatio close to one), whereas the paired penalty enforces SplitRatio $=0$ by construction, preserving invariance with respect to splitting a feature into $(+,-)$ components.
+\input{tables/table_paired_invariance.tex}
+
+
+
+
+\subsection{Main comparison}
+\label{sec:main_comparison}
+We now report the main comparison between DAGFS and the baselines under the unified $p$-grid protocol.
+For each dataset and fold, each method produces \emph{one} feature ranking from the training split only; we then evaluate the top-$k(p)$ prefix for each $p\in\{5\%,10\%,\ldots,50\%\}$ with the same downstream classifier and average scores over the 5 folds. We employ ML-kNN as the primary downstream classifier to benchmark ranking quality under a standard, widely-used evaluator \cite{Zhang_2007}.
+Following common practice, we use $p=20\%$ as the main operating point for tabular comparisons, and we use the full $p$-grid curves to ensure that conclusions are not an artifact of a single feature budget.
+
+\paragraph{Metrics.}
+Let $\hat{Y}\in\{0,1\}^{n\times L}$ be the predicted label matrix on the test split for a given $p$.
+Denote by $\mathrm{TP}=\sum_{i,\ell}\mathbb{I}[Y_{i\ell}=1\wedge \hat{Y}_{i\ell}=1]$ the total number of true positives across all labels, and analogously define $\mathrm{FP}$ and $\mathrm{FN}$.
+We report:
+\emph{Micro-F1}, defined as
+\begin{equation}
+  \mathrm{Micro\mbox{-}F1} \;=\; \frac{2\,\mathrm{TP}}{2\,\mathrm{TP}+\mathrm{FP}+\mathrm{FN}},
+\end{equation}
+which aggregates decisions over all label--instance pairs and therefore reflects overall predictive quality, typically dominated by labels with higher support.
+\emph{Macro-F1}, defined as the average of label-wise F1 scores,
+\begin{equation}
+  \mathrm{Macro\mbox{-}F1} \;=\; \frac{1}{L}\sum_{\ell=1}^{L}\frac{2\,\mathrm{TP}_\ell}{2\,\mathrm{TP}_\ell+\mathrm{FP}_\ell+\mathrm{FN}_\ell},
+\end{equation}
+which weights all labels equally and is therefore more sensitive to labels with low support; as a consequence it is also typically more variable across folds and datasets.
+Finally, we report \emph{Hamming Loss},
+\begin{equation}
+  \mathrm{HL} \;=\; \frac{1}{nL}\sum_{i=1}^{n}\sum_{\ell=1}^{L}\mathbb{I}\big[Y_{i\ell}\neq \hat{Y}_{i\ell}\big],
+\end{equation}
+which measures the fraction of misclassified label assignments (lower is better) and penalizes false positives and false negatives uniformly per label.
+In addition, we report \emph{PR-AUC} (area under the precision--recall curve) using the per-label posterior scores output by ML-kNN.
+We compute \emph{Micro PR-AUC} by pooling all label--instance pairs and \emph{Macro PR-AUC} by averaging label-wise PR-AUC scores; this provides a threshold-free view of ranking quality that is typically more informative than F1 under strong imbalance.
+We also report two label-ranking metrics computed from the same posterior scores: \emph{example-based Average Precision} (AvgPrec), also known as label-ranking average precision, and \emph{One-error}.
+Let $g(x_i,y)$ be the real-valued score for label $y$ on instance $x_i$, and let $Y_i$ be the set of relevant labels for $x_i$.
+One-error is defined as
+\begin{equation}
+  \mathrm{One\mbox{-}error} \;=\; \frac{1}{n}\sum_{i=1}^{n}\mathbb{I}\Big[\arg\max_{y} g(x_i,y)\notin Y_i\Big],
+\end{equation}
+where lower values are better.
+AvgPrec is the example-based average of precisions at the ranks of relevant labels:
+\begin{equation}
+  \mathrm{AvgPrec} \;=\; \frac{1}{n}\sum_{i=1}^{n}\frac{1}{|Y_i|}\sum_{y\in Y_i}\frac{\big|\{y'\in Y_i:\,R_i(y') \le R_i(y)\}\big|}{R_i(y)},
+\end{equation}
+where $R_i(y)$ is the rank of label $y$ induced by sorting scores $g(x_i,\cdot)$ in descending order (higher is better).
+Together, these metrics provide complementary views: Micro-F1 emphasizes overall accuracy under imbalance, Macro-F1 stress-tests per-label quality, Hamming Loss captures label-wise error rates, PR-AUC avoids dependence on a fixed decision threshold, and AvgPrec/One-error evaluate whether relevant labels are placed early in the score ordering.
+
+In Tables~\ref{tab:main_f1_landscape}, \ref{tab:main_hl_oneerror_landscape}, and \ref{tab:main_prauc_avgprec_landscape} we report mean$\pm$std over the 5 folds for each dataset at $p=20\%$ selected features.
+
+
+Across the 15 benchmarks, DAGFS attains the best mean Micro-F1 on 9 datasets, with the remaining wins split among strong competitors (GRRO on \emph{Business}/\emph{Entertain}, SCNMF on \emph{Health}/\emph{Reference}, RFSFS on \emph{Corel5k}, and LRMFS on \emph{Emotions}).
+Importantly, the cases in which DAGFS is not the top method tend to reflect well-known inductive biases:
+GRRO can be particularly effective when a relevance--redundancy trade-off aligns well with the downstream classifier, and NMF-style methods (SCNMF) can excel when low-rank structure dominates the signal.
+Nevertheless, DAGFS remains consistently competitive and avoids sharp collapses, which is critical when averaging across heterogeneous benchmarks.
+
+Macro-F1 in Table~\ref{tab:main_f1_landscape} shows an even clearer advantage for DAGFS: it is best on 11/15 datasets, indicating that the method improves per-label quality beyond the aggregate gains captured by Micro-F1.
+The few exceptions are informative: GRRO leads on \emph{Entertain}, \emph{Emotions} and \emph{Yeast}, while RFSFS is strongest on \emph{Education}.
+These datasets have different label cardinalities and imbalance profiles, and the results highlight that no single selector dominates all regimes; our goal is therefore not to claim universal superiority, but to demonstrate a robust average advantage under a fixed protocol.
+
+Hamming Loss (Table~\ref{tab:main_hl_oneerror_landscape}) largely confirms the Micro/Macro trends while revealing that absolute differences can be small for this metric.
+DAGFS achieves the lowest Hamming Loss on 9 datasets, with GRRO and SCNMF accounting for most of the remaining wins.
+Notably, even when differences are numerically small, consistent improvements in Hamming Loss are valuable because they indicate fewer label-wise mistakes across the entire label matrix, which is relevant in applications where false positives are costly.
+
+
+In Table~\ref{tab:main_prauc_avgprec_landscape} we show some threshold-free evaluation, namely micro and macro PR-AUC (AUPRC) as well as AvgPrec at $p=20\%$, computed from the ML-kNN posterior scores. This view is complementary to F1 because it does not depend on a fixed decision threshold and is typically more informative under severe imbalance.
+Overall, DAGFS remains competitive on PR-AUC: it improves over most baselines on average, while GRRO is a particularly strong competitor under this metric family. Consistently with this, the post-hoc comparisons in Table~\ref{tab:stats_pgrid} show that PR-AUC differences between DAGFS and GRRO are not statistically significant under Holm correction, even when average ranks slightly favor one method over the other.
+
+In Table~\ref{tab:main_prauc_avgprec_landscape} (AvgPrec) and Table~\ref{tab:main_hl_oneerror_landscape} (One-error) we provide a complementary ranking-oriented view. In particular, AvgPrec evaluates whether relevant labels are concentrated near the top of the score list for each instance, while One-error captures the probability that the single top-scored label is irrelevant. These metrics are often more interpretable than Hamming Loss when the application is a tagging-like scenario where the very top predictions matter.
+
+To summarize performance across datasets, Table~\ref{tab:ranks_pgrid} reports average ranks (lower is better) at $p=20\%$.
+DAGFS obtains the best rank on the main benchmark metrics (Micro-F1, Macro-F1 and Hamming Loss), supporting that its advantage is not driven by a single dataset.
+\input{tables/table_ranks.tex}
+We further validate these conclusions statistically in Table~\ref{tab:stats_pgrid}:
+the Friedman tests strongly reject the null hypothesis of equal performance across methods for all reported metrics.
+Holm-corrected paired Wilcoxon comparisons across datasets (using per-dataset scores averaged over folds) show that DAGFS significantly outperforms all baselines on Micro-F1 and Macro-F1, and it significantly improves Hamming Loss over all baselines except GRRO, for which the difference is not significant.
+This is consistent with the fact that Hamming Loss differences are typically much smaller in absolute magnitude than F1 differences, making ties more likely even when average ranks favor DAGFS.
+
+
+While $p=20\%$ is our primary operating point, Figures~\ref{fig:pgrid_curves_by_dataset_part1}--\ref{fig:pgrid_curves} provide a more stringent view by evaluating the entire feature-ratio grid.
+The per-dataset grids (Figures~\ref{fig:pgrid_curves_by_dataset_part1} and~\ref{fig:pgrid_curves_by_dataset_part2}) reveal that optimal feature budgets vary substantially across datasets, and that the relative ordering of methods is most discriminative in the low-to-mid regime ($p\le 30\%$), where aggressive selection is required.
+The mean curves in Figure~\ref{fig:pgrid_curves} show a characteristic behavior of distance-based multi-label classifiers: Micro-F1 and Macro-F1 tend to peak at relatively small feature ratios and can decrease when too many features are included (distance concentration and noisy dimensions), whereas Hamming Loss typically improves (decreases) and then stabilizes as $p$ grows. The threshold-free PR-AUC curves are smoother and often saturate early, while AvgPrec complements PR-AUC by emphasizing whether relevant labels are concentrated near the top of the score ordering.
+Across this entire grid, DAGFS is consistently among the best methods and is particularly strong in the regime where feature selection matters the most (small $p$), supporting that its rankings identify informative features early in the list rather than relying on large budgets.
+
+\input{tables/table_main_f1_landscape.tex}
+\input{tables/table_main_hl_oneerror_landscape.tex}
+\input{tables/table_main_prauc_avgprec_landscape.tex}
+\input{tables/table_stats.tex}
+
+\begin{figure*}[!htb]
+	\centering
+	\includegraphics[height=0.9\textheight,keepaspectratio]{figures/pgrid_curves_by_dataset_grid_part1.pdf}
+	\caption{Per-dataset $p$-grid curves for all benchmarks (Part 1/2). Rows correspond to datasets, columns to metrics (Micro-F1, Macro-F1, Hamming Loss). Curves are averaged over 5 folds. Higher is better for Micro/Macro-F1, while lower is better for Hamming Loss.}
+	\label{fig:pgrid_curves_by_dataset_part1}
+\end{figure*}
+
+\begin{figure*}[!htb]
+	\centering
+	\includegraphics[height=0.9\textheight,keepaspectratio]{figures/pgrid_curves_by_dataset_grid_part2.pdf}
+	\caption{Per-dataset $p$-grid curves for all benchmarks (Part 2/2). Rows correspond to datasets, columns to metrics (Micro-F1, Macro-F1, Hamming Loss). Curves are averaged over 5 folds. Higher is better for Micro/Macro-F1, while lower is better for Hamming Loss.}
+	\label{fig:pgrid_curves_by_dataset_part2}
+\end{figure*}
+
+\begin{figure*}[!htb]
+	\centering
+	\includegraphics[width=0.8\textwidth]{figures/pgrid_curves.pdf}
+	\caption{Mean ML-kNN performance as a function of the selected feature ratio $p\in\{5\%,10\%,\ldots,50\%\}$, obtained by first averaging each dataset over 5 folds and then averaging across datasets. Top row: Micro-F1, Macro-F1, Hamming Loss. Bottom row: Micro PR-AUC, Macro PR-AUC, AvgPrec (example-based).}
+	\label{fig:pgrid_curves}
+\end{figure*}
+
+
+
+\subsection{Ablation Study}
+We assess the contribution of each ingredient through an \emph{additive} (incremental) ablation at $p=20\%$ selected features.
+This choice is deliberate: in embedded MLFS, components interact through the learned sparse matrix $W$, so \emph{removal-style} ablations can be hard to interpret because other terms may partially compensate for a removed ingredient.
+In contrast, an additive protocol isolates \emph{marginal gains} under a fixed baseline.
+
+The \emph{Base} version is the plain nonnegative reconstruction model with $\ell_{2,1}$ sparsity (no lift, no instance reweighting, no directed coupling).
+We then add one ingredient at a time:
+(i) \emph{+Lift} adds the signed-deviation feature lift and paired group ranking,
+(ii) \emph{+DirGraph} adds the directed label-transfer regularizer,
+and (iii) \emph{+Inst} adds reliability-aware instance reweighting (also used when computing label similarities).
+All hyperparameters are kept fixed across datasets, and all variants are evaluated under the same folds and downstream classifier (ML-kNN), so any change can be attributed to the added component rather than to tuning.
+
+Table~\ref{tab:ablation_additive_summary} summarizes mean$\pm$std across datasets, while Table~\ref{tab:ablation_additive_steps} reports the \emph{stepwise} relative improvements ($\Delta\%$; positive is better for all metrics), win/tie/loss counts, and one-sided paired Wilcoxon tests across datasets.
+The signed-deviation lift provides the dominant and statistically significant improvement: it increases Micro-F1 by $+5.6\%$ and Macro-F1 by $+12.8\%$ on average, while reducing Hamming Loss by $1.15\%$ (Table~\ref{tab:ablation_additive_steps}).
+These gains are also consistent across datasets (e.g., 11/15 wins for Micro-F1, 12/15 for Macro-F1, and 14/15 for Hamming Loss), which aligns with the theoretical motivation in Section~3: the lift breaks the monotonicity barrier of nonnegative models and enables two-sided evidence without changing the selection space.
+
+The directed coupling and instance reweighting add smaller refinements on top of the lifted model.
+The directed label-transfer regularizer yields only a marginal average change on F1 metrics (about $+0.2\%$ Micro-F1 and $+1.0\%$ Macro-F1), and its effect is not statistically significant under the conservative no-tuning protocol; in particular, Hamming Loss slightly worsens on average (Table~\ref{tab:ablation_additive_steps}).
+Instance reweighting produces a small average gain on Micro-F1 (about $+0.7\%$) while leaving Macro-F1 essentially unchanged, but it yields a statistically significant improvement on Hamming Loss ($+0.30\%$ relative reduction; 10/15 wins, one-sided Wilcoxon $p=0.010$).
+Overall, these components behave as \emph{light-touch} regularizers: they are not meant to replace the core expressivity gain of the lift, but to stabilize training-fold rankings by injecting reliability-aware bias into how supervision and label coupling are aggregated.
+
+To make the ablation easier to interpret beyond aggregate means, Figure~\ref{fig:ablation_delta_percent} visualizes the distribution of per-dataset relative gains for each step.
+The lift shift is consistently positive across datasets and metrics, whereas the graph and instance steps concentrate near zero, highlighting that their net effect depends on the reliability of label-similarity estimates and on dataset-specific imbalance profiles.
+\input{tables/table_ablation_additive_summary.tex}
+\input{tables/table_ablation_additive_steps.tex}
+
+\begin{figure*}[!tb]
+		\centering
+		\includegraphics[width=\textwidth]{figures/ablation_delta_percent.pdf}
+		\caption{Additive ablation at $p=20\%$ selected features: per-dataset relative gains ($\Delta\%$) for each incremental step (positive is better for all metrics; Hamming Loss gains use $(old-new)/old$). Boxplots summarize the distribution across datasets and points show per-dataset values; the black marker indicates the mean.}
+		\label{fig:ablation_delta_percent}
+\end{figure*}
+
+
+
+
+\section{Conclusion}
+This paper introduced DAGFS, an embedded nonnegative MLFS method designed to improve the expressivity and stability of reconstruction-based MLFS under realistic supervision conditions.
+DAGFS combines a signed-deviation feature lift (to express two-sided evidence under nonnegativity), reliability-aware instance reweighting (to stabilize learning when supervision density is heterogeneous), and a directed label-transfer graph (to control correlation transfer and mitigate oversmoothing).
+The resulting formulation remains simple --- it is optimized with multiplicative updates and produces a single ranking per fold through paired group norms in the original feature space --- yet it substantially broadens the set of label/feature interaction patterns that can be captured by reconstruction-based MLFS.
+
+Empirically, under a unified $p$-grid protocol on 15 benchmark datasets, DAGFS achieves the best average ranks on Micro-F1, Macro-F1 and Hamming Loss at $p=20\%$ selected features, and statistical tests confirm significant improvements over strong recent baselines on the main F1 metrics.
+
+There are several natural directions for future work.
+First, the directed transfer matrix is currently constructed from reweighted co-occurrence statistics and a frequency prior; learning or adapting this directed graph more explicitly could further improve robustness in small-sample regimes.
+Second, richer two-sided encodings (e.g., multi-threshold lifts) may capture non-Gaussian feature distributions more effectively while retaining nonnegativity.
+Finally, scaling DAGFS to extremely large label spaces and integrating stronger calibration mechanisms for downstream learners are promising avenues for practical deployment.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{bibliography}
+
+\end{document}

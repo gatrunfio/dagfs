@@ -1,0 +1,76 @@
+\begin{table*}[!tb]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lclccccc}
+\toprule
+Metric & Friedman $p$ & Compared & Gain (ref. adv.) & W/T/L & Wilcoxon $p$ & Holm $p$ & Sig. \\
+\midrule
+\textbf{Micro-F1} & 5.14e-07 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0306 & 12/1/2 & 0.00286 & 0.0116 & \ding{51} \\
+ &  & GRRO & 0.0164 & 10/1/4 & 0.00918 & 0.0184 & \ding{51} \\
+ &  & SRFS & 0.0137 & 13/1/1 & 0.00351 & 0.0116 & \ding{51} \\
+ &  & SCNMF & 0.1348 & 13/0/2 & 0.0181 & 0.0184 & \ding{51} \\
+ &  & LSMFS & 0.1440 & 13/0/2 & 0.00061 & 0.00366 & \ding{51} \\
+ &  & LRDG & 0.1425 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & RFSFS & 0.0147 & 12/1/2 & 0.00233 & 0.0116 & \ding{51} \\
+\midrule
+\textbf{Macro-F1} & 1.66e-11 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0173 & 13/1/1 & 0.00233 & 0.00932 & \ding{51} \\
+ &  & GRRO & 0.0083 & 11/1/3 & 0.0157 & 0.0157 & \ding{51} \\
+ &  & SRFS & 0.0080 & 13/1/1 & 0.00233 & 0.00932 & \ding{51} \\
+ &  & SCNMF & 0.0645 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & LSMFS & 0.0765 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & LRDG & 0.0643 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & RFSFS & 0.0072 & 12/1/2 & 0.00521 & 0.0104 & \ding{51} \\
+\midrule
+\textbf{Hamming Loss} & 5.28e-06 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0012 & 12/1/2 & 0.00429 & 0.0171 & \ding{51} \\
+ &  & GRRO & 0.0002 & 11/1/3 & 0.064 & 0.064 &  \\
+ &  & SRFS & 0.0020 & 13/1/1 & 0.00123 & 0.00735 & \ding{51} \\
+ &  & SCNMF & 0.0054 & 11/0/4 & 0.00537 & 0.0171 & \ding{51} \\
+ &  & LSMFS & 0.0052 & 12/0/3 & 0.00671 & 0.0171 & \ding{51} \\
+ &  & LRDG & 0.0048 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & RFSFS & 0.0016 & 13/1/1 & 0.00233 & 0.0116 & \ding{51} \\
+\midrule
+\textbf{Micro PR-AUC} & 1.47e-09 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0282 & 12/1/2 & 0.00233 & 0.00932 & \ding{51} \\
+ &  & GRRO & 0.0117 & 10/1/4 & 0.0962 & 0.0962 &  \\
+ &  & SRFS & 0.0115 & 12/1/2 & 0.00429 & 0.0129 & \ding{51} \\
+ &  & SCNMF & 0.1249 & 14/0/1 & 0.000122 & 0.000854 & \ding{51} \\
+ &  & LSMFS & 0.1242 & 14/0/1 & 0.000122 & 0.000854 & \ding{51} \\
+ &  & LRDG & 0.1097 & 14/0/1 & 0.000183 & 0.000916 & \ding{51} \\
+ &  & RFSFS & 0.0110 & 11/1/3 & 0.00429 & 0.0129 & \ding{51} \\
+\midrule
+\textbf{Macro PR-AUC} & 1.7e-10 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0202 & 13/1/1 & 0.00429 & 0.0171 & \ding{51} \\
+ &  & GRRO & 0.0061 & 6/1/8 & 0.975 & 0.975 &  \\
+ &  & SRFS & 0.0055 & 10/1/4 & 0.0258 & 0.0775 &  \\
+ &  & SCNMF & 0.0952 & 14/0/1 & 0.000183 & 0.0011 & \ding{51} \\
+ &  & LSMFS & 0.0937 & 15/0/0 & 6.1e-05 & 0.000427 & \ding{51} \\
+ &  & LRDG & 0.0797 & 13/0/2 & 0.000305 & 0.00153 & \ding{51} \\
+ &  & RFSFS & 0.0055 & 9/1/5 & 0.0413 & 0.0827 &  \\
+\midrule
+\textbf{AvgPrec} & 2.25e-08 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0205 & 13/1/1 & 0.00189 & 0.00944 & \ding{51} \\
+ &  & GRRO & 0.0093 & 10/1/4 & 0.158 & 0.158 &  \\
+ &  & SRFS & 0.0072 & 12/1/2 & 0.00429 & 0.0129 & \ding{51} \\
+ &  & SCNMF & 0.0828 & 12/0/3 & 0.00201 & 0.00944 & \ding{51} \\
+ &  & LSMFS & 0.0815 & 14/0/1 & 0.000122 & 0.000854 & \ding{51} \\
+ &  & LRDG & 0.0727 & 14/0/1 & 0.000122 & 0.000854 & \ding{51} \\
+ &  & RFSFS & 0.0067 & 10/1/4 & 0.00763 & 0.0153 & \ding{51} \\
+\midrule
+\textbf{One-error} & 1.31e-08 &  &  &  &  &  &  \\
+ &  & LRMFS & 0.0255 & 13/1/1 & 0.00632 & 0.019 & \ding{51} \\
+ &  & GRRO & 0.0101 & 8/1/6 & 0.245 & 0.245 &  \\
+ &  & SRFS & 0.0099 & 11/1/3 & 0.00351 & 0.014 & \ding{51} \\
+ &  & SCNMF & 0.1059 & 12/0/3 & 0.0103 & 0.0205 & \ding{51} \\
+ &  & LSMFS & 0.1057 & 14/0/1 & 0.000427 & 0.00256 & \ding{51} \\
+ &  & LRDG & 0.0953 & 14/0/1 & 0.000122 & 0.000854 & \ding{51} \\
+ &  & RFSFS & 0.0087 & 13/1/1 & 0.00233 & 0.0116 & \ding{51} \\
+\midrule
+\bottomrule
+\end{tabular}
+\caption{Statistical tests across datasets at 20\% selected features. We report the Friedman test (over methods), followed by paired Wilcoxon post-hoc comparisons against the reference method (DAGFS), with Holm correction for multiple comparisons. Each row compares the reference to one method. Gain is an \emph{advantage} score defined as $(\text{ref}-\text{other})$ for higher-is-better metrics (Micro/Macro-F1, PR-AUC, AvgPrec) and as $(\text{other}-\text{ref})$ for lower-is-better metrics (Hamming Loss, One-error), so Gain $>0$ means the reference is better. W/T/L counts the number of datasets where the reference wins/ties/loses. Wilcoxon $p$ is one-sided in the direction of Gain; Holm $p$ is the corrected value; Sig. marks Holm $p\le 0.05$.}
+\label{tab:stats_pgrid}
+\end{table*}

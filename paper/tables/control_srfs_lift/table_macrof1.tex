@@ -1,0 +1,28 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccc}
+\toprule
+Dataset & DAGFS & SRFS & SRFS+Lift \\
+\midrule
+ARTS & \textbf{0.0410 $\pm$ 0.0050} & 0.0361 $\pm$ 0.0020 & 0.0303 $\pm$ 0.0030 \\
+BUSINESS & \textbf{0.0565 $\pm$ 0.0037} & 0.0515 $\pm$ 0.0024 & 0.0502 $\pm$ 0.0042 \\
+EDUCATION & 0.0252 $\pm$ 0.0011 & \textbf{0.0285 $\pm$ 0.0093} & 0.0245 $\pm$ 0.0124 \\
+ENTERTAIN & \textbf{0.1066 $\pm$ 0.0050} & 0.0995 $\pm$ 0.0086 & 0.0950 $\pm$ 0.0140 \\
+HEALTH & \textbf{0.1177 $\pm$ 0.0054} & 0.1105 $\pm$ 0.0084 & 0.1068 $\pm$ 0.0076 \\
+RECREATION & \textbf{0.0678 $\pm$ 0.0095} & 0.0563 $\pm$ 0.0057 & 0.0582 $\pm$ 0.0066 \\
+REFERENCE & \textbf{0.0417 $\pm$ 0.0042} & 0.0386 $\pm$ 0.0026 & 0.0365 $\pm$ 0.0041 \\
+SCIENCE & \textbf{0.0172 $\pm$ 0.0033} & 0.0090 $\pm$ 0.0043 & 0.0090 $\pm$ 0.0020 \\
+SOCIAL & \textbf{0.0401 $\pm$ 0.0085} & 0.0307 $\pm$ 0.0060 & 0.0337 $\pm$ 0.0018 \\
+EMOTIONS & 0.5959 $\pm$ 0.0214 & 0.5469 $\pm$ 0.0227 & \textbf{0.6003 $\pm$ 0.0155} \\
+ENRON & 0.0861 $\pm$ 0.0051 & \textbf{0.0906 $\pm$ 0.0055} & 0.0892 $\pm$ 0.0053 \\
+GENBASE & \textbf{0.5236 $\pm$ 0.0173} & 0.5236 $\pm$ 0.0173 & \textbf{0.5236 $\pm$ 0.0173} \\
+MEDICAL & \textbf{0.2106 $\pm$ 0.0131} & 0.1986 $\pm$ 0.0146 & 0.1969 $\pm$ 0.0132 \\
+SCENE & 0.6343 $\pm$ 0.0232 & 0.5959 $\pm$ 0.0342 & \textbf{0.6413 $\pm$ 0.0102} \\
+YEAST & \textbf{0.3381 $\pm$ 0.0247} & 0.3306 $\pm$ 0.0081 & 0.3372 $\pm$ 0.0121 \\
+\bottomrule
+\end{tabular}
+\caption{Macro-F1 at 20\% selected features (mean $\\pm$ std over 5 folds). Best per dataset in bold.}
+\label{tab:macrof1_pgrid}
+\end{table*}

@@ -1,0 +1,86 @@
+{
+  "datasets": [
+    "Arts",
+    "Business",
+    "Education",
+    "Entertain",
+    "Health",
+    "Recreation",
+    "Reference",
+    "Science",
+    "Social",
+    "bibtex",
+    "corel5k",
+    "emotions",
+    "genbase",
+    "medical",
+    "yeast"
+  ],
+  "mean_over_datasets": 0.4474152697646229,
+  "median_over_datasets": 0.336,
+  "notes": "Training folds only. Decreasing evidence per label is detected via point-biserial correlation corr(feature,label); we count labels with min_j corr <= -tau.",
+  "per_dataset": {
+    "Arts": {
+      "mean": 0.336,
+      "std": 0.021908902300206635
+    },
+    "Business": {
+      "mean": 0.10714285714285714,
+      "std": 0.0
+    },
+    "Education": {
+      "mean": 0.275,
+      "std": 0.02614562582918986
+    },
+    "Entertain": {
+      "mean": 0.5238095238095238,
+      "std": 0.0
+    },
+    "Health": {
+      "mean": 0.312,
+      "std": 0.01788854381999831
+    },
+    "Recreation": {
+      "mean": 0.4818181818181818,
+      "std": 0.051826155686324434
+    },
+    "Reference": {
+      "mean": 0.14068965517241377,
+      "std": 0.026668152951049757
+    },
+    "Science": {
+      "mean": 0.19807692307692307,
+      "std": 0.02821969320904505
+    },
+    "Social": {
+      "mean": 0.18228228228228227,
+      "std": 0.014415587414734907
+    },
+    "bibtex": {
+      "mean": 0.6150943396226415,
+      "std": 0.023278937765184582
+    },
+    "corel5k": {
+      "mean": 0.016712396235750843,
+      "std": 0.002249931328572564
+    },
+    "emotions": {
+      "mean": 1.0,
+      "std": 0.0
+    },
+    "genbase": {
+      "mean": 0.6948717948717948,
+      "std": 0.022934030538459375
+    },
+    "medical": {
+      "mean": 0.8277310924369748,
+      "std": 0.04454574211999516
+    },
+    "yeast": {
+      "mean": 1.0,
+      "std": 0.0
+    }
+  },
+  "std_over_datasets": 0.3207161869053855,
+  "tau": 0.05
+}

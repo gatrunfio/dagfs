@@ -1,0 +1,25 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lclccccc}
+\toprule
+Metric & Friedman $p$ & Baseline & Gain & W/T/L & Wilcoxon $p$ & Holm $p$ & Sig. \\
+\midrule
+\textbf{Micro-F1} & 0.0012 &  &  &  &  &  &  \\
+ &  & SRFS & 0.0190 & 14/0/1 & 0.000427 & 0.000854 & \ding{51} \\
+ &  & SRFS+Lift & 0.0180 & 12/1/2 & 0.00918 & 0.00918 & \ding{51} \\
+\midrule
+\textbf{Macro-F1} & 0.00978 &  &  &  &  &  &  \\
+ &  & SRFS & 0.0104 & 13/0/2 & 0.00116 & 0.00232 & \ding{51} \\
+ &  & SRFS+Lift & 0.0047 & 11/1/3 & 0.0186 & 0.0186 & \ding{51} \\
+\midrule
+\textbf{Hamming Loss} & 0.0022 &  &  &  &  &  &  \\
+ &  & SRFS & 0.0024 & 14/0/1 & 0.000427 & 0.000854 & \ding{51} \\
+ &  & SRFS+Lift & 0.0005 & 11/1/3 & 0.0355 & 0.0355 & \ding{51} \\
+\midrule
+\bottomrule
+\end{tabular}
+\caption{Statistical tests across datasets at 20\% selected features. We report the Friedman test (over methods) and Holm-corrected paired Wilcoxon post-hoc comparisons against the reference method (DAGFS). Gain is defined to be positive when the reference performs better (Micro/Macro-F1: higher is better; Hamming Loss: lower is better). W/T/L counts wins/ties/losses over datasets.}
+\label{tab:stats_pgrid}
+\end{table*}

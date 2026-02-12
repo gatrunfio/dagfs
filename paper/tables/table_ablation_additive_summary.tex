@@ -1,0 +1,17 @@
+\begin{table}[!tb]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+Variant & Micro-F1 & Macro-F1 & Hamming Loss \\
+\midrule
+Base & 0.3597 $\pm$ 0.2891 & 0.1478 $\pm$ 0.1809 & 0.0585 $\pm$ 0.0668 \\
++Lift & \textbf{0.3693 $\pm$ 0.2874} & 0.1555 $\pm$ 0.1849 & 0.0573 $\pm$ 0.0644 \\
++Lift+DirGraph & 0.3667 $\pm$ 0.2861 & 0.1559 $\pm$ 0.1841 & 0.0575 $\pm$ 0.0649 \\
++Lift+DirGraph+Inst & 0.3678 $\pm$ 0.2875 & \textbf{0.1563 $\pm$ 0.1856} & \textbf{0.0569 $\pm$ 0.0635} \\
+\bottomrule
+\end{tabular}
+\caption{Additive ablation summary at $p=20\%$ selected features (mean $\pm$ std across datasets). Micro/Macro-F1: higher is better; Hamming Loss: lower is better. Best per metric in bold.}
+\label{tab:ablation_additive_summary}
+\end{table}

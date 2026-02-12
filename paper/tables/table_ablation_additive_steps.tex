@@ -1,0 +1,19 @@
+\begin{table}[!tb]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{lccc}
+\toprule
+Step & Micro ($\uparrow$) & Macro ($\uparrow$) & HL ($\downarrow$) \\
+\midrule
+Base $\to$ +Lift & \begin{tabular}[c]{@{}c@{}}+5.59\%\\11/1/3\\$p=0.00459$\end{tabular} & \begin{tabular}[c]{@{}c@{}}+12.82\%\\12/1/2\\$p=0.00658$\end{tabular} & \begin{tabular}[c]{@{}c@{}}+1.15\%\\14/1/0\\$p=0.000491$\end{tabular} \\
+\midrule
++Lift $\to$ +Lift+DirGraph & \begin{tabular}[c]{@{}c@{}}+0.16\%\\6/1/8\\$p=0.85$\end{tabular} & \begin{tabular}[c]{@{}c@{}}+0.99\%\\8/1/6\\$p=0.165$\end{tabular} & \begin{tabular}[c]{@{}c@{}}-0.27\%\\2/2/11\\$p=0.99$\end{tabular} \\
+\midrule
++Lift+DirGraph $\to$ +Lift+DirGraph+Inst & \begin{tabular}[c]{@{}c@{}}+0.65\%\\5/4/6\\$p=0.328$\end{tabular} & \begin{tabular}[c]{@{}c@{}}+0.04\%\\5/4/6\\$p=0.571$\end{tabular} & \begin{tabular}[c]{@{}c@{}}+0.30\%\\10/4/1\\$p=0.0104$\end{tabular} \\
+\bottomrule
+\end{tabular}
+\caption{Additive ablation: marginal effect of each component at $p=20\%$ selected features. $\Delta\%$ is the mean relative improvement across datasets (Micro/Macro-F1: $(new-old)/old$; Hamming Loss: $(old-new)/old$). Within each metric cell we report $(\Delta,\,\mathrm{W/T/L},\,p)$, where W/T/L counts datasets where the new variant is better/tied/worse and $p$ is a one-sided paired Wilcoxon test across datasets.}
+\label{tab:ablation_additive_steps}
+\end{table}

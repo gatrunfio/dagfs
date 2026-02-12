@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+Method & Micro-F1 & Macro-F1 & Hamming Loss \\
+\midrule
+DAGFS & 1.23 & 1.37 & 1.30 \\
+SRFS & 2.40 & 2.27 & 2.53 \\
+SRFS+Lift & 2.37 & 2.37 & 2.17 \\
+\bottomrule
+\end{tabular}
+\caption{Average ranks across datasets at 20\% selected features (lower is better). Friedman tests: Micro-F1 ($\chi^2$=13.46, $p$=0.0012); Macro-F1 ($\chi^2$=9.25, $p$=0.00978); Hamming Loss ($\chi^2$=12.24, $p$=0.0022).}
+\label{tab:ranks_pgrid}
+\end{table}

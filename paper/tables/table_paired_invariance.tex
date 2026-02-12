@@ -1,0 +1,30 @@
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcc}
+\toprule
+Dataset & SplitRatio (unpaired) & $J$(paired, unpaired) \\
+\midrule
+Arts & 0.972 $\pm$ 0.004 & 0.929 $\pm$ 0.011 \\
+Business & 0.916 $\pm$ 0.004 & 0.757 $\pm$ 0.023 \\
+Education & 0.952 $\pm$ 0.005 & 0.903 $\pm$ 0.015 \\
+Entertain & 0.939 $\pm$ 0.009 & 0.957 $\pm$ 0.012 \\
+Health & 0.928 $\pm$ 0.007 & 0.924 $\pm$ 0.013 \\
+Recreation & 0.982 $\pm$ 0.009 & 0.964 $\pm$ 0.013 \\
+Reference & 0.958 $\pm$ 0.005 & 0.930 $\pm$ 0.015 \\
+Science & 0.936 $\pm$ 0.006 & 0.925 $\pm$ 0.022 \\
+Social & 0.935 $\pm$ 0.005 & 0.942 $\pm$ 0.008 \\
+Bibtex & 1.000 $\pm$ 0.000 & 1.000 $\pm$ 0.000 \\
+Corel5k & 1.000 $\pm$ 0.000 & 1.000 $\pm$ 0.000 \\
+Emotions & 0.896 $\pm$ 0.049 & 0.923 $\pm$ 0.113 \\
+Genbase & 0.760 $\pm$ 0.007 & 1.000 $\pm$ 0.000 \\
+Medical & 0.997 $\pm$ 0.003 & 0.997 $\pm$ 0.004 \\
+Yeast & 0.818 $\pm$ 0.055 & 0.827 $\pm$ 0.056 \\
+\midrule
+Mean over datasets & 0.933 $\pm$ 0.067 & 0.932 $\pm$ 0.067 \\
+\bottomrule
+\end{tabular}
+\caption{Lift split artefact diagnostic at $p=20\%$ selected features, aggregated over all datasets and folds. SplitRatio is computed on the unpaired lifted variant by selecting the top-$(2k)$ lifted components (with $k=\mathrm{round}(p\,d)$) and measuring the fraction of \emph{touched} original features for which exactly one of $(j^+)$ or $(j^-)$ is selected. $J$(paired, unpaired) is the Jaccard overlap between the top-$k$ original feature sets induced by the paired model (paper ranking) and by the unpaired model (derived by max pooling the $(+/-)$ row norms). For paired DAGFS, SplitRatio is $0$ by design.}
+\label{tab:paired_invariance}
+\end{table}

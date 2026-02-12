@@ -1,0 +1,28 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccc}
+\toprule
+Dataset & DAGFS & SRFS & SRFS+Lift \\
+\midrule
+ARTS & \textbf{0.0616 $\pm$ 0.0002} & 0.0621 $\pm$ 0.0003 & 0.0625 $\pm$ 0.0001 \\
+BUSINESS & \textbf{0.0282 $\pm$ 0.0001} & 0.0283 $\pm$ 0.0002 & 0.0284 $\pm$ 0.0004 \\
+EDUCATION & \textbf{0.0434 $\pm$ 0.0001} & 0.0437 $\pm$ 0.0003 & 0.0436 $\pm$ 0.0001 \\
+ENTERTAIN & \textbf{0.0607 $\pm$ 0.0003} & 0.0620 $\pm$ 0.0004 & 0.0612 $\pm$ 0.0005 \\
+HEALTH & \textbf{0.0455 $\pm$ 0.0002} & 0.0468 $\pm$ 0.0005 & 0.0467 $\pm$ 0.0003 \\
+RECREATION & \textbf{0.0639 $\pm$ 0.0004} & 0.0647 $\pm$ 0.0002 & 0.0648 $\pm$ 0.0001 \\
+REFERENCE & \textbf{0.0323 $\pm$ 0.0001} & 0.0328 $\pm$ 0.0003 & 0.0329 $\pm$ 0.0001 \\
+SCIENCE & 0.0364 $\pm$ 0.0001 & 0.0365 $\pm$ 0.0001 & \textbf{0.0364 $\pm$ 0.0001} \\
+SOCIAL & \textbf{0.0283 $\pm$ 0.0002} & 0.0289 $\pm$ 0.0003 & 0.0293 $\pm$ 0.0002 \\
+EMOTIONS & \textbf{0.2112 $\pm$ 0.0100} & 0.2311 $\pm$ 0.0101 & 0.2125 $\pm$ 0.0131 \\
+ENRON & 0.0515 $\pm$ 0.0010 & 0.0513 $\pm$ 0.0009 & \textbf{0.0512 $\pm$ 0.0008} \\
+GENBASE & \textbf{0.0054 $\pm$ 0.0004} & 0.0054 $\pm$ 0.0004 & \textbf{0.0054 $\pm$ 0.0004} \\
+MEDICAL & \textbf{0.0137 $\pm$ 0.0008} & 0.0151 $\pm$ 0.0004 & 0.0153 $\pm$ 0.0006 \\
+SCENE & 0.1118 $\pm$ 0.0036 & 0.1179 $\pm$ 0.0065 & \textbf{0.1100 $\pm$ 0.0027} \\
+YEAST & \textbf{0.2009 $\pm$ 0.0022} & 0.2044 $\pm$ 0.0015 & 0.2026 $\pm$ 0.0033 \\
+\bottomrule
+\end{tabular}
+\caption{Hamming Loss at 20\% selected features (mean $\\pm$ std over 5 folds). Best (lowest) per dataset in bold.}
+\label{tab:hamming_pgrid}
+\end{table*}
